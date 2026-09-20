@@ -19,8 +19,37 @@
 
     <link
         rel="stylesheet"
-        href="assets/faculty-dashboard.css?v=20260919fix3"
+        href="assets/faculty-dashboard.css"
     >
+
+
+<style>
+/* Faculty history / rejection additions */
+.faculty-section {
+    display: none;
+}
+.faculty-section.active {
+    display: block;
+}
+.status-pill.rejected-type {
+    background: #f5ead8;
+    color: #79502d;
+    border: 1px solid #e4cfa9;
+}
+.faculty-table-card .empty-table,
+.faculty-table-card .table-loading {
+    padding: 36px 20px;
+    text-align: center;
+}
+@media (max-width: 900px) {
+    .faculty-table-card {
+        overflow-x: auto;
+    }
+    .faculty-table-card table {
+        min-width: 780px;
+    }
+}
+</style>
 
 </head>
 
@@ -106,22 +135,6 @@
 
         <button
             class="faculty-nav-item"
-            data-section="historyPanel"
-        >
-
-            <span class="nav-icon">
-                🕘
-            </span>
-
-            <span>
-                History
-            </span>
-
-        </button>
-
-
-        <button
-            class="faculty-nav-item"
             data-section="requestPanel"
         >
 
@@ -145,6 +158,54 @@
 
         <button
             class="faculty-nav-item"
+            data-section="returnPanel"
+        >
+
+            <span class="nav-icon">
+                ↩
+            </span>
+
+            <span>
+                Return Requests
+            </span>
+
+        </button>
+
+
+        <button
+            class="faculty-nav-item"
+            data-section="historyPanel"
+        >
+
+            <span class="nav-icon">
+                🕘
+            </span>
+
+            <span>
+                History
+            </span>
+
+        </button>
+
+
+        <button
+            class="faculty-nav-item"
+            data-section="rejectionPanel"
+        >
+
+            <span class="nav-icon">
+                🚫
+            </span>
+
+            <span>
+                Rejected Requests
+            </span>
+
+        </button>
+
+
+        <button
+            class="faculty-nav-item"
             data-section="documentsSection"
         >
 
@@ -159,9 +220,9 @@
         </button>
 
 
-        <a
-            class="faculty-nav-item faculty-nav-link"
-            href="books.html"
+        <button
+            class="faculty-nav-item"
+            data-section="catalogueSection"
         >
 
             <span class="nav-icon">
@@ -172,7 +233,7 @@
                 View Catalogue
             </span>
 
-        </a>
+        </button>
 
     </nav>
 
@@ -542,16 +603,13 @@
                     </span>
 
                     <h2>
-                        My Books
+                        My Borrowed Books
                     </h2>
 
                     <p>
-                        View your currently issued books. Books with a pending return request appear under <strong>Requested</strong>.
+                        Books currently issued to you.
+                        Return requires administrator approval.
                     </p>
-                    <div class="book-view-tabs" role="group" aria-label="Current book view">
-                        <button type="button" class="book-view-tab active" data-book-view="active">Active</button>
-                        <button type="button" class="book-view-tab" data-book-view="requested">Requested</button>
-                    </div>
 
                 </div>
 
@@ -563,13 +621,6 @@
                     ↻ Refresh
                 </button>
 
-            </div>
-
-
-            <div class="matlib-table-search">
-                <span class="matlib-search-icon">⌕</span>
-                <input type="search" id="borrowSearch" placeholder="Search all borrowed books by title, author, accession or cupboard..." autocomplete="off">
-                <button type="button" class="matlib-search-clear" data-clear-search="borrowSearch" aria-label="Clear search">×</button>
             </div>
 
 
@@ -646,60 +697,6 @@
 
 
         <!-- =================================================
-             BOOK HISTORY
-        ================================================== -->
-
-        <section
-            id="historyPanel"
-            class="faculty-section"
-        >
-
-            <div class="page-section-header">
-                <div>
-                    <span class="eyebrow">LIBRARY</span>
-                    <h2>History</h2>
-                    <p>History of books that were successfully returned.</p>
-                </div>
-
-                <button
-                    class="dashboard-btn secondary"
-                    id="refreshHistoryBtn"
-                >
-                    ↻ Refresh
-                </button>
-            </div>
-
-            <div class="matlib-table-search">
-                <span class="matlib-search-icon">⌕</span>
-                <input type="search" id="historySearch" placeholder="Search returned books by title, author, accession or cupboard..." autocomplete="off">
-                <button type="button" class="matlib-search-clear" data-clear-search="historySearch" aria-label="Clear search">×</button>
-            </div>
-
-            <div class="faculty-table-card">
-                <div class="table-scroll">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Book</th>
-                                <th>Author</th>
-                                <th>Accession</th>
-                                <th>Cupboard</th>
-                                <th>Issued</th>
-                                <th>Returned</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="facultyHistoryBody">
-                            <tr><td colspan="7" class="table-loading">Loading history...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-        </section>
-
-
-        <!-- =================================================
              BOOK REQUESTS
         ================================================== -->
 
@@ -721,8 +718,8 @@
                     </h2>
 
                     <p>
-                        View your current pending book requests.
-                        You can cancel a request before it is approved.
+                        Track your book requests.
+                        Pending requests can be cancelled.
                     </p>
 
                 </div>
@@ -735,13 +732,6 @@
                     ↻ Refresh
                 </button>
 
-            </div>
-
-
-            <div class="matlib-table-search">
-                <span class="matlib-search-icon">⌕</span>
-                <input type="search" id="requestSearch" placeholder="Search my book requests..." autocomplete="off">
-                <button type="button" class="matlib-search-clear" data-clear-search="requestSearch" aria-label="Clear search">×</button>
             </div>
 
 
@@ -772,6 +762,14 @@
                                 </th>
 
                                 <th>
+                                    Due Date
+                                </th>
+
+                                <th>
+                                    Reason
+                                </th>
+
+                                <th>
                                     Action
                                 </th>
 
@@ -785,7 +783,7 @@
                             <tr>
 
                                 <td
-                                    colspan="5"
+                                    colspan="7"
                                     class="table-loading"
                                 >
                                     Loading requests...
@@ -806,8 +804,213 @@
 
 
         <!-- =================================================
+             RETURN REQUESTS
+        ================================================== -->
+
+        <section
+            id="returnPanel"
+            class="faculty-section"
+        >
+
+            <div class="page-section-header">
+
+                <div>
+
+                    <span class="eyebrow">
+                        RETURNS
+                    </span>
+
+                    <h2>
+                        My Return Requests
+                    </h2>
+
+                    <p>
+                        Administrator must approve
+                        the return.
+                    </p>
+
+                </div>
+
+
+                <button
+                    class="dashboard-btn secondary"
+                    id="refreshReturnsBtn"
+                >
+                    ↻ Refresh
+                </button>
+
+            </div>
+
+
+            <div class="faculty-table-card">
+
+                <div class="table-scroll">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Book
+                                </th>
+
+                                <th>
+                                    Accession
+                                </th>
+
+                                <th>
+                                    Requested
+                                </th>
+
+                                <th>
+                                    Status
+                                </th>
+
+                                <th>
+                                    Reason
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="facultyReturnBody">
+
+                            <tr>
+
+                                <td
+                                    colspan="5"
+                                    class="table-loading"
+                                >
+                                    Loading return requests...
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =================================================
              DOCUMENTS
         ================================================== -->
+
+
+        <!-- =================================================
+             BOOK HISTORY
+        ================================================== -->
+        <section
+            id="historyPanel"
+            class="faculty-section"
+        >
+
+            <div class="page-section-header">
+
+                <div>
+                    <span class="eyebrow">HISTORY</span>
+                    <h2>Book History</h2>
+                    <p>Successfully issued and returned books.</p>
+                </div>
+
+                <button
+                    class="dashboard-btn secondary"
+                    id="refreshHistoryBtn"
+                >
+                    ↻ Refresh
+                </button>
+
+            </div>
+
+            <div class="faculty-table-card">
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Book</th>
+                                <th>Accession</th>
+                                <th>Cupboard</th>
+                                <th>Issued</th>
+                                <th>Due</th>
+                                <th>Returned</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="facultyHistoryBody">
+                            <tr>
+                                <td colspan="7" class="table-loading">
+                                    Loading history...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             REJECTED REQUESTS
+        ================================================== -->
+        <section
+            id="rejectionPanel"
+            class="faculty-section"
+        >
+
+            <div class="page-section-header">
+
+                <div>
+                    <span class="eyebrow">REJECTIONS</span>
+                    <h2>Rejected Requests</h2>
+                    <p>Book requests and return requests rejected by the administrator.</p>
+                </div>
+
+                <button
+                    class="dashboard-btn secondary"
+                    id="refreshRejectionsBtn"
+                >
+                    ↻ Refresh
+                </button>
+
+            </div>
+
+            <div class="faculty-table-card">
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Request</th>
+                                <th>Book</th>
+                                <th>Accession</th>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Reason</th>
+                            </tr>
+                        </thead>
+                        <tbody id="facultyRejectionBody">
+                            <tr>
+                                <td colspan="6" class="table-loading">
+                                    Loading rejected requests...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
 
         <section
             id="documentsSection"
@@ -1395,7 +1598,7 @@
 ></script>
 
 <script
-    src="assets/faculty-dashboard.js?v=20260919fix3"
+    src="assets/faculty-dashboard.js"
 ></script>
 
 

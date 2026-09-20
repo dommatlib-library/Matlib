@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MatLib - Student Dashboard</title>
+    <link rel="stylesheet" href="assets/student-dashboard.css">
+</head>
+<body>
+    <div class="page-background"></div>
+
+    <aside class="student-sidebar" id="studentSidebar">
+        <div class="student-sidebar-brand">
+            <div class="student-brand-main">
+                <span class="brand-symbol">√x</span>
+                <span class="student-sidebar-brand-text">MatLib</span>
+            </div>
+            <button type="button" class="sidebar-collapse-button" id="sidebarCollapseButton" title="Collapse menu" aria-label="Collapse menu" aria-expanded="true">‹</button>
+        </div>
+
+        <nav class="student-sidebar-nav" aria-label="Student navigation">
+            <button type="button" class="student-nav-item active" data-student-nav="documents">
+                <span class="student-nav-icon">▦</span>
+                <span>Documents</span>
+            </button>
+
+            <button type="button" class="student-nav-item" data-student-nav="cgpa">
+                <span class="student-nav-icon">∑</span>
+                <span>CGPA Calculator</span>
+            </button>
+        </nav>
+
+        <div class="student-sidebar-bottom">
+            <div class="student-online">
+                <span class="student-online-dot"></span>
+                <span>Student Portal</span>
+            </div>
+            <button type="button" class="student-logout-sidebar" id="studentSidebarLogout">
+                <span>↪</span>
+                <span>Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <div class="student-app-shell">
+        <header class="drive-header">
+            <div class="drive-header-left">
+                <button class="icon-button mobile-student-menu" id="studentMenuButton" title="Menu">☰</button>
+                <div class="matlib-brand">
+                    <span class="brand-symbol">√x</span>
+                    <span class="brand-name">MatLib</span>
+                </div>
+                <div class="header-separator"></div>
+                <div class="drive-page-name" id="studentPageName">Documents</div>
+            </div>
+
+            <div class="drive-header-right">
+                <button class="header-refresh" id="studentRefresh" title="Refresh">↻</button>
+                <div class="drive-student">
+                    <div id="headerStudentName" class="drive-student-name">Student</div>
+                    <div id="headerStudentEmail" class="drive-student-email">-</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="student-page-stage">
+            <section id="documentsView" class="student-view">
+                <main class="drive-main">
+
+
+        <!-- =================================================
+             TOP BAR
+        ================================================== -->
+
+        <section class="drive-top">
+
+            <div class="drive-heading">
+
+                <h1>
+                    Question Papers
+                </h1>
+
+                <p>
+                    MatLib Library Documents
+                </p>
+
+            </div>
+
+
+            <div class="student-mini-profile">
+
+                <div class="mini-avatar">
+                    <span id="studentInitial">
+                        S
+                    </span>
+                </div>
+
+                <div>
+
+                    <strong id="introStudentName">
+                        Student
+                    </strong>
+
+                    <small>
+                        Roll No.
+                        <span id="introStudentRoll">
+                            -
+                        </span>
+                    </small>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             DRIVE TOOLBAR
+        ================================================== -->
+
+        <section class="drive-toolbar">
+
+            <div class="toolbar-left">
+
+                <button
+                    class="toolbar-button active"
+                    type="button"
+                >
+                    <span>▦</span>
+                    My Documents
+                </button>
+
+            </div>
+
+
+            <div class="toolbar-right">
+
+                <span
+                    id="documentCount"
+                    class="document-count"
+                >
+                    Loading...
+                </span>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             BREADCRUMB
+        ================================================== -->
+
+        <div class="drive-breadcrumb-wrap">
+            <button type="button" class="breadcrumb-back" id="breadcrumbBack" title="Go back" aria-label="Go back">←</button>
+            <div class="drive-breadcrumb" id="driveBreadcrumb">
+                <span class="breadcrumb-current">Question Papers</span>
+            </div>
+        </div>
+
+
+        <!-- =================================================
+             LOADING
+        ================================================== -->
+
+        <section
+            id="documentsLoading"
+            class="documents-loading"
+        >
+
+            <div class="drive-loader"></div>
+
+            <span>
+                Loading documents...
+            </span>
+
+        </section>
+
+
+        <!-- =================================================
+             MESSAGE
+        ================================================== -->
+
+        <section
+            id="documentsMessage"
+            class="documents-message"
+            style="display:none;"
+        ></section>
+
+
+        <!-- =================================================
+             DOCUMENT AREA
+        ================================================== -->
+
+        <section
+            id="documentsContainer"
+            class="documents-container"
+        ></section>
+
+
+    </main>
+            </section>
+
+            <section id="cgpaView" class="student-view">
+                <div class="cgpa-frame-card">
+                    <div class="cgpa-frame-header">
+                        <div>
+                            <span class="student-eyebrow">ACADEMICS</span>
+                            <h1>CGPA Calculator</h1>
+                        </div>
+                        <button type="button" id="cgpaOpenNewTab" class="cgpa-secondary-btn">Open separately</button>
+                    </div>
+                    <div class="cgpa-frame-wrap">
+                        <iframe
+                            id="cgpaFrame"
+                            title="MatLib CGPA Calculator"
+                            src="https://semscrab.vercel.app/"
+                            loading="lazy"
+                            referrerpolicy="strict-origin-when-cross-origin"
+                            allow="clipboard-read; clipboard-write"
+                        ></iframe>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="assets/config.js"></script>
+    <script src="assets/student-dashboard.js"></script>
+</body>
+</html>
