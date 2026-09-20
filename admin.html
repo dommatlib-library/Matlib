@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="MatLib Administrator Login"
+    >
+
+    <title>MatLib | Administrator Login</title>
+
+    <link
+        rel="stylesheet"
+        href="assets/admin.css"
+    >
+
+</head>
+
+
+<body>
+
+
+    <!-- =====================================================
+         ANIMATED BACKGROUND
+    ====================================================== -->
+
+    <div class="background">
+
+        <div class="glow glow-one"></div>
+        <div class="glow glow-two"></div>
+        <div class="glow glow-three"></div>
+
+        <div class="floating-book book-one">
+            📖
+        </div>
+
+        <div class="floating-book book-two">
+            📚
+        </div>
+
+        <div class="floating-book book-three">
+            📕
+        </div>
+
+        <div class="floating-book book-four">
+            📗
+        </div>
+
+    </div>
+
+
+
+    <!-- =====================================================
+         HEADER
+    ====================================================== -->
+
+    <header class="top-header">
+
+        <a
+            href="index.html"
+            class="brand"
+        >
+
+            <span class="brand-symbol">
+                √x
+            </span>
+
+            <span class="brand-name">
+                MatLib
+            </span>
+
+        </a>
+
+
+        <a
+            href="index.html"
+            class="back-link"
+        >
+
+            <span>←</span>
+
+            <span>Back</span>
+
+        </a>
+
+    </header>
+
+
+
+    <!-- =====================================================
+         MAIN
+    ====================================================== -->
+
+    <main class="login-page">
+
+
+        <!-- LEFT INFORMATION -->
+        <section class="intro-panel">
+
+            <div class="intro-content">
+
+                <div class="intro-badge">
+                    MATLIB ADMINISTRATION
+                </div>
+
+
+                <h1>
+                    Manage your
+                    <span>Library.</span>
+                </h1>
+
+
+                <p>
+                    Secure access to the MatLib
+                    administration dashboard.
+                </p>
+
+
+                <div class="feature-list">
+
+
+                    <div class="feature-item">
+
+                        <div class="feature-icon">
+                            📚
+                        </div>
+
+                        <div>
+                            <strong>
+                                Library Management
+                            </strong>
+
+                            <span>
+                                Manage books and categories
+                            </span>
+                        </div>
+
+                    </div>
+
+
+
+                    <div class="feature-item">
+
+                        <div class="feature-icon">
+                            👨‍🏫
+                        </div>
+
+                        <div>
+                            <strong>
+                                Faculty Management
+                            </strong>
+
+                            <span>
+                                Approve and manage faculty
+                            </span>
+                        </div>
+
+                    </div>
+
+
+
+                    <div class="feature-item">
+
+                        <div class="feature-icon">
+                            ☁️
+                        </div>
+
+                        <div>
+                            <strong>
+                                Document Management
+                            </strong>
+
+                            <span>
+                                Manage MatLib Drive documents
+                            </span>
+                        </div>
+
+                    </div>
+
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             LOGIN CARD
+        ================================================== -->
+
+        <section class="login-section">
+
+            <div class="login-card">
+
+
+                <!-- CARD HEADER -->
+
+                <div class="login-card-header">
+
+                    <div class="admin-icon">
+
+                        <span>
+                            🔐
+                        </span>
+
+                    </div>
+
+
+                    <div>
+
+                        <div class="secure-label">
+                            SECURE ACCESS
+                        </div>
+
+                        <h2>
+                            Administrator Login
+                        </h2>
+
+                        <p>
+                            Sign in to continue
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- FORM -->
+
+                <form
+                    id="adminLoginForm"
+                    autocomplete="on"
+                >
+
+
+                    <!-- EMAIL -->
+
+                    <div class="form-group">
+
+                        <label
+                            for="adminEmail"
+                        >
+                            Email
+                        </label>
+
+                        <div class="input-wrapper">
+
+                            <span class="input-icon">
+                                ✉
+                            </span>
+
+                            <input
+                                type="email"
+                                id="adminEmail"
+                                name="email"
+                                placeholder="Enter administrator email"
+                                autocomplete="username"
+                                required
+                            >
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- PASSWORD -->
+
+                    <div class="form-group">
+
+                        <div class="label-row">
+
+                            <label
+                                for="adminPassword"
+                            >
+                                Password
+                            </label>
+
+                        </div>
+
+
+                        <div class="input-wrapper">
+
+                            <span class="input-icon">
+                                🔑
+                            </span>
+
+                            <input
+                                type="password"
+                                id="adminPassword"
+                                name="password"
+                                placeholder="Enter your password"
+                                autocomplete="current-password"
+                                required
+                            >
+
+
+                            <button
+                                type="button"
+                                id="togglePassword"
+                                class="password-toggle"
+                                aria-label="Show password"
+                            >
+                                👁
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- CAPTCHA -->
+
+                    <div class="form-group captcha-group">
+
+                        <div class="label-row">
+
+                            <label>
+                                Security Verification
+                            </label>
+
+                            <span class="captcha-length">
+                                6 DIGITS
+                            </span>
+
+                        </div>
+
+
+                        <div class="captcha-box">
+
+                            <div
+                                id="captchaText"
+                                class="captcha-code"
+                                aria-label="CAPTCHA"
+                            >
+                                000000
+                            </div>
+
+
+                            <button
+                                type="button"
+                                id="refreshCaptcha"
+                                class="captcha-refresh"
+                                aria-label="Refresh CAPTCHA"
+                                title="Generate new CAPTCHA"
+                            >
+                                ↻
+                            </button>
+
+                        </div>
+
+
+                        <div class="captcha-input-wrapper">
+
+                            <span class="input-icon">
+                                #
+                            </span>
+
+                            <input
+                                type="text"
+                                id="adminCaptcha"
+                                name="captcha"
+                                inputmode="numeric"
+                                pattern="[0-9]{6}"
+                                maxlength="6"
+                                minlength="6"
+                                placeholder="Enter 6-digit CAPTCHA"
+                                autocomplete="off"
+                                required
+                            >
+
+                        </div>
+
+                    </div>
+
+
+
+                    <!-- MESSAGE -->
+
+                    <div
+                        id="adminMessage"
+                        class="message"
+                        role="alert"
+                        aria-live="polite"
+                    ></div>
+
+
+
+                    <!-- LOGIN -->
+
+                    <button
+                        type="submit"
+                        id="adminLoginButton"
+                        class="login-button"
+                    >
+
+                        <span
+                            id="loginButtonText"
+                        >
+                            Login as Administrator
+                        </span>
+
+                        <span
+                            id="loginSpinner"
+                            class="spinner hidden"
+                        ></span>
+
+                    </button>
+
+
+                </form>
+
+
+
+                <!-- SECURITY FOOTER -->
+
+                <div class="security-note">
+
+                    <span class="security-lock">
+                        🔒
+                    </span>
+
+                    <div>
+
+                        <strong>
+                            Administrator Security
+                        </strong>
+
+                        <p>
+                            Your credentials are securely
+                            verified through MatLib authentication.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+
+    <!-- =====================================================
+         FOOTER
+    ====================================================== -->
+
+    <footer class="page-footer">
+
+        <span>
+            √x MatLib
+        </span>
+
+        <span class="footer-dot">
+            •
+        </span>
+
+        <span>
+            Library Management System
+        </span>
+
+    </footer>
+
+
+
+    <!-- =====================================================
+         SUPABASE
+    ====================================================== -->
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script src="assets/config.js"></script>
+
+    <script src="assets/admin.js"></script>
+
+
+</body>
+
+</html>

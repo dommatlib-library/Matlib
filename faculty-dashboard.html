@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Faculty Dashboard — MatLib</title>
+
+    <link
+        rel="stylesheet"
+        href="assets/style.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="assets/faculty-dashboard.css?v=20260919fix3"
+    >
+
+</head>
+
+
+<body class="faculty-dashboard-page">
+
+
+<!-- =========================================================
+     SIDEBAR
+========================================================= -->
+
+<aside
+    class="faculty-sidebar"
+    id="facultySidebar"
+>
+
+    <!-- BRAND -->
+
+    <div class="faculty-brand">
+
+        <a
+            href="index.html"
+            class="faculty-brand-link"
+        >
+
+            <span class="faculty-brand-mark">
+                √x
+            </span>
+
+            <span class="faculty-brand-text">
+
+                <strong>
+                    MatLib
+                </strong>
+
+                <small>
+                    FACULTY PORTAL
+                </small>
+
+            </span>
+
+        </a>
+
+    </div>
+
+
+    <!-- NAVIGATION -->
+
+    <nav class="faculty-nav">
+
+
+        <button
+            class="faculty-nav-item active"
+            data-section="dashboardSection"
+        >
+
+            <span class="nav-icon">
+                ⌂
+            </span>
+
+            <span>
+                Dashboard
+            </span>
+
+        </button>
+
+
+        <button
+            class="faculty-nav-item"
+            data-section="borrowPanel"
+        >
+
+            <span class="nav-icon">
+                📚
+            </span>
+
+            <span>
+                My Books
+            </span>
+
+        </button>
+
+
+        <button
+            class="faculty-nav-item"
+            data-section="historyPanel"
+        >
+
+            <span class="nav-icon">
+                🕘
+            </span>
+
+            <span>
+                History
+            </span>
+
+        </button>
+
+
+        <button
+            class="faculty-nav-item"
+            data-section="requestPanel"
+        >
+
+            <span class="nav-icon">
+                📩
+            </span>
+
+            <span>
+                Book Requests
+            </span>
+
+            <span
+                class="nav-badge"
+                id="sidebarRequestBadge"
+            >
+                0
+            </span>
+
+        </button>
+
+
+        <button
+            class="faculty-nav-item"
+            data-section="documentsSection"
+        >
+
+            <span class="nav-icon">
+                ☁
+            </span>
+
+            <span>
+                Documents
+            </span>
+
+        </button>
+
+
+        <a
+            class="faculty-nav-item faculty-nav-link"
+            href="books.html"
+        >
+
+            <span class="nav-icon">
+                📖
+            </span>
+
+            <span>
+                View Catalogue
+            </span>
+
+        </a>
+
+    </nav>
+
+
+    <!-- SIDEBAR FOOTER -->
+
+    <div class="faculty-sidebar-footer">
+
+        <div class="system-status">
+
+            <span class="online-dot"></span>
+
+            <span>
+                System Online
+            </span>
+
+        </div>
+
+
+        <button
+            class="faculty-logout-btn"
+            id="facultyLogoutBtn"
+        >
+
+            <span>
+                ↪
+            </span>
+
+            <span>
+                Logout
+            </span>
+
+        </button>
+
+    </div>
+
+</aside>
+
+
+
+<!-- =========================================================
+     MAIN AREA
+========================================================= -->
+
+<main class="faculty-main">
+
+
+    <!-- =====================================================
+         TOP BAR
+    ====================================================== -->
+
+    <header class="faculty-topbar">
+
+        <div>
+
+            <button
+                class="mobile-menu-btn"
+                id="mobileMenuBtn"
+            >
+                ☰
+            </button>
+
+            <h1 id="pageTitle">
+                Faculty Dashboard
+            </h1>
+
+        </div>
+
+
+        <div class="faculty-user-area">
+
+            <div
+                class="faculty-avatar"
+                id="facultyAvatar"
+            >
+                F
+            </div>
+
+            <div class="faculty-user-info">
+
+                <strong id="facultyHeaderName">
+                    Faculty
+                </strong>
+
+                <span>
+                    Faculty ID:
+                    <b id="facultyHeaderId">
+                        —
+                    </b>
+                </span>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- =====================================================
+         CONTENT
+    ====================================================== -->
+
+    <div class="faculty-content">
+
+
+        <!-- =================================================
+             DASHBOARD
+        ================================================== -->
+
+        <section
+            id="dashboardSection"
+            class="faculty-section active"
+        >
+
+
+            <!-- HERO -->
+
+            <section class="faculty-welcome-card">
+
+                <div class="welcome-content">
+
+                    <span class="eyebrow">
+                        MATLIB FACULTY PORTAL
+                    </span>
+
+                    <h2>
+                        Welcome,
+                        <span id="facultyGreetingName">
+                            Faculty
+                        </span>
+                    </h2>
+
+                    <p>
+                        Manage your books, requests,
+                        returns and academic documents
+                        from one place.
+                    </p>
+
+                </div>
+
+
+                <div class="approved-badge">
+
+                    <span>
+                        ✓
+                    </span>
+
+                    Approved Faculty
+
+                </div>
+
+            </section>
+
+
+
+            <!-- STATISTICS -->
+
+            <section class="faculty-stats-grid">
+
+
+                <div class="faculty-stat-card">
+
+                    <div class="stat-icon books">
+                        📚
+                    </div>
+
+                    <div>
+
+                        <span>
+                            Borrowed Books
+                        </span>
+
+                        <strong id="facultyBorrowed">
+                            0
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <div class="faculty-stat-card">
+
+                    <div class="stat-icon requests">
+                        📩
+                    </div>
+
+                    <div>
+
+                        <span>
+                            Total Requests
+                        </span>
+
+                        <strong id="facultyRequests">
+                            0
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <div class="faculty-stat-card">
+
+                    <div class="stat-icon pending">
+                        ⏳
+                    </div>
+
+                    <div>
+
+                        <span>
+                            Pending Requests
+                        </span>
+
+                        <strong id="facultyPending">
+                            0
+                        </strong>
+
+                    </div>
+
+                </div>
+
+
+                <div class="faculty-stat-card">
+
+                    <div class="stat-icon overdue">
+                        !
+                    </div>
+
+                    <div>
+
+                        <span>
+                            Overdue Books
+                        </span>
+
+                        <strong id="facultyOverdue">
+                            0
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </section>
+
+
+
+            <!-- QUICK ACTIONS -->
+
+            <section class="quick-actions-section">
+
+                <div class="section-heading">
+
+                    <span>
+                        QUICK ACTIONS
+                    </span>
+
+                    <h2>
+                        Library
+                    </h2>
+
+                </div>
+
+
+                <div class="quick-actions-grid">
+
+
+                    <button
+                        class="quick-action-card"
+                        data-section-action="catalogueSection"
+                    >
+
+                        <span class="quick-icon">
+                            📩
+                        </span>
+
+                        <span class="quick-text">
+
+                            <strong>
+                                Request a Book
+                            </strong>
+
+                            <small>
+                                Find and request an
+                                available book.
+                            </small>
+
+                        </span>
+
+                    </button>
+
+
+                    <button
+                        class="quick-action-card"
+                        data-section-action="borrowPanel"
+                    >
+
+                        <span class="quick-icon">
+                            📚
+                        </span>
+
+                        <span class="quick-text">
+
+                            <strong>
+                                My Borrowed Books
+                            </strong>
+
+                            <small>
+                                Check issued books
+                                and due dates.
+                            </small>
+
+                        </span>
+
+                    </button>
+
+
+                    <button
+                        class="quick-action-card"
+                        data-section-action="documentsSection"
+                    >
+
+                        <span class="quick-icon">
+                            ☁
+                        </span>
+
+                        <span class="quick-text">
+
+                            <strong>
+                                Academic Documents
+                            </strong>
+
+                            <small>
+                                Upload and access
+                                faculty documents.
+                            </small>
+
+                        </span>
+
+                    </button>
+
+                </div>
+
+            </section>
+
+
+        </section>
+
+
+
+        <!-- =================================================
+             BORROWED BOOKS
+        ================================================== -->
+
+        <section
+            id="borrowPanel"
+            class="faculty-section"
+        >
+
+            <div class="page-section-header">
+
+                <div>
+
+                    <span class="eyebrow">
+                        LIBRARY
+                    </span>
+
+                    <h2>
+                        My Books
+                    </h2>
+
+                    <p>
+                        View your currently issued books. Books with a pending return request appear under <strong>Requested</strong>.
+                    </p>
+                    <div class="book-view-tabs" role="group" aria-label="Current book view">
+                        <button type="button" class="book-view-tab active" data-book-view="active">Active</button>
+                        <button type="button" class="book-view-tab" data-book-view="requested">Requested</button>
+                    </div>
+
+                </div>
+
+
+                <button
+                    class="dashboard-btn secondary"
+                    id="refreshBorrowedBtn"
+                >
+                    ↻ Refresh
+                </button>
+
+            </div>
+
+
+            <div class="matlib-table-search">
+                <span class="matlib-search-icon">⌕</span>
+                <input type="search" id="borrowSearch" placeholder="Search all borrowed books by title, author, accession or cupboard..." autocomplete="off">
+                <button type="button" class="matlib-search-clear" data-clear-search="borrowSearch" aria-label="Clear search">×</button>
+            </div>
+
+
+            <div class="faculty-table-card">
+
+                <div class="table-scroll">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Book
+                                </th>
+
+                                <th>
+                                    Author
+                                </th>
+
+                                <th>
+                                    Accession
+                                </th>
+
+                                <th>
+                                    Cupboard
+                                </th>
+
+                                <th>
+                                    Issued
+                                </th>
+
+                                <th>
+                                    Due
+                                </th>
+
+                                <th>
+                                    Status
+                                </th>
+
+                                <th>
+                                    Action
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="facultyBorrowedBody">
+
+                            <tr>
+
+                                <td
+                                    colspan="8"
+                                    class="table-loading"
+                                >
+                                    Loading books...
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             BOOK HISTORY
+        ================================================== -->
+
+        <section
+            id="historyPanel"
+            class="faculty-section"
+        >
+
+            <div class="page-section-header">
+                <div>
+                    <span class="eyebrow">LIBRARY</span>
+                    <h2>History</h2>
+                    <p>History of books that were successfully returned.</p>
+                </div>
+
+                <button
+                    class="dashboard-btn secondary"
+                    id="refreshHistoryBtn"
+                >
+                    ↻ Refresh
+                </button>
+            </div>
+
+            <div class="matlib-table-search">
+                <span class="matlib-search-icon">⌕</span>
+                <input type="search" id="historySearch" placeholder="Search returned books by title, author, accession or cupboard..." autocomplete="off">
+                <button type="button" class="matlib-search-clear" data-clear-search="historySearch" aria-label="Clear search">×</button>
+            </div>
+
+            <div class="faculty-table-card">
+                <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Book</th>
+                                <th>Author</th>
+                                <th>Accession</th>
+                                <th>Cupboard</th>
+                                <th>Issued</th>
+                                <th>Returned</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="facultyHistoryBody">
+                            <tr><td colspan="7" class="table-loading">Loading history...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             BOOK REQUESTS
+        ================================================== -->
+
+        <section
+            id="requestPanel"
+            class="faculty-section"
+        >
+
+            <div class="page-section-header">
+
+                <div>
+
+                    <span class="eyebrow">
+                        REQUESTS
+                    </span>
+
+                    <h2>
+                        My Book Requests
+                    </h2>
+
+                    <p>
+                        View your current pending book requests.
+                        You can cancel a request before it is approved.
+                    </p>
+
+                </div>
+
+
+                <button
+                    class="dashboard-btn secondary"
+                    id="refreshRequestsBtn"
+                >
+                    ↻ Refresh
+                </button>
+
+            </div>
+
+
+            <div class="matlib-table-search">
+                <span class="matlib-search-icon">⌕</span>
+                <input type="search" id="requestSearch" placeholder="Search my book requests..." autocomplete="off">
+                <button type="button" class="matlib-search-clear" data-clear-search="requestSearch" aria-label="Clear search">×</button>
+            </div>
+
+
+            <div class="faculty-table-card">
+
+                <div class="table-scroll">
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Book
+                                </th>
+
+                                <th>
+                                    Accession
+                                </th>
+
+                                <th>
+                                    Requested
+                                </th>
+
+                                <th>
+                                    Status
+                                </th>
+
+                                <th>
+                                    Action
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="facultyRequestsBody">
+
+                            <tr>
+
+                                <td
+                                    colspan="5"
+                                    class="table-loading"
+                                >
+                                    Loading requests...
+                                </td>
+
+                            </tr>
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =================================================
+             DOCUMENTS
+        ================================================== -->
+
+        <section
+            id="documentsSection"
+            class="faculty-section"
+        >
+
+
+            <div class="documents-header">
+
+                <div>
+
+                    <span class="eyebrow">
+                        ACADEMIC STORAGE
+                    </span>
+
+                    <h2>
+                        Documents
+                    </h2>
+
+                    <p>
+                        Store and manage academic
+                        documents using Google Drive.
+                    </p>
+
+                </div>
+
+
+                <div class="drive-status">
+
+                    <span class="drive-status-dot"></span>
+
+                    <span
+                        id="documentsDriveStatusText"
+                    >
+                        Connecting...
+                    </span>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- DOCUMENT TOOLBAR -->
+
+            <div class="documents-toolbar">
+
+
+                <div class="document-search">
+
+                    <span>
+                        🔍
+                    </span>
+
+                    <input
+                        type="search"
+                        id="documentSearch"
+                        placeholder="Search documents..."
+                    >
+
+                    <button
+                        type="button"
+                        id="clearDocumentSearch"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+
+                <select
+                    id="documentTypeFilter"
+                    class="document-filter"
+                >
+
+                    <option value="all">
+                        All types
+                    </option>
+
+                    <option value="pdf">
+                        PDF
+                    </option>
+
+                    <option value="word">
+                        Word
+                    </option>
+
+                    <option value="excel">
+                        Excel
+                    </option>
+
+                    <option value="powerpoint">
+                        PowerPoint
+                    </option>
+
+                    <option value="image">
+                        Images
+                    </option>
+
+                    <option value="other">
+                        Other
+                    </option>
+
+                </select>
+
+
+                <select
+                    id="documentSort"
+                    class="document-filter"
+                >
+
+                    <option value="name-asc">
+                        Name A-Z
+                    </option>
+
+                    <option value="name-desc">
+                        Name Z-A
+                    </option>
+
+                    <option value="date-desc">
+                        Newest
+                    </option>
+
+                    <option value="date-asc">
+                        Oldest
+                    </option>
+
+                    <option value="size-desc">
+                        Largest
+                    </option>
+
+                    <option value="size-asc">
+                        Smallest
+                    </option>
+
+                </select>
+
+
+                <button
+                    class="document-toolbar-btn"
+                    id="documentsRefreshBtn"
+                >
+                    ↻
+                </button>
+
+
+                <button
+                    class="document-toolbar-btn"
+                    id="newDocumentFolderBtn"
+                >
+                    ＋ Folder
+                </button>
+
+
+                <button
+                    class="document-upload-btn"
+                    id="uploadDocumentBtn"
+                >
+                    ＋ Upload
+                </button>
+
+
+                <div class="document-view-toggle">
+
+                    <button
+                        type="button"
+                        id="documentsListViewBtn"
+                        class="active"
+                    >
+                        ☷
+                    </button>
+
+                    <button
+                        type="button"
+                        id="documentsGridViewBtn"
+                    >
+                        ▦
+                    </button>
+
+                </div>
+
+            </div>
+
+
+
+            <!-- ROOT FOLDERS -->
+
+            <div class="documents-root-area">
+
+                <div class="documents-root-title">
+
+                    <span>
+                        Library
+                    </span>
+
+                    <small>
+                        Root folders
+                    </small>
+
+                </div>
+
+
+                <div
+                    id="documentRootList"
+                    class="document-root-list"
+                >
+                    Loading folders...
+                </div>
+
+            </div>
+
+
+
+            <!-- BREADCRUMB -->
+
+            <div
+                id="documentBreadcrumb"
+                class="document-breadcrumb"
+            >
+
+                <button
+                    type="button"
+                    class="breadcrumb-item active"
+                    data-breadcrumb-home
+                >
+                    ☁ Documents
+                </button>
+
+            </div>
+
+
+
+            <!-- WORKSPACE -->
+
+            <div class="documents-workspace-card">
+
+                <div class="documents-workspace-top">
+
+                    <strong>
+                        Files
+                    </strong>
+
+                    <span id="documentItemCount">
+                        0 items
+                    </span>
+
+                </div>
+
+
+                <div
+                    id="documentWorkspace"
+                    class="document-workspace"
+                >
+                </div>
+
+
+                <div
+                    id="documentEmptyState"
+                    class="document-empty-state hidden"
+                >
+
+                    <div>
+                        ☁
+                    </div>
+
+                    <h3>
+                        This folder is empty
+                    </h3>
+
+                    <p>
+                        Upload a document or
+                        create a new folder.
+                    </p>
+
+                    <button
+                        class="document-upload-btn"
+                        id="emptyUploadBtn"
+                    >
+                        ＋ Upload Document
+                    </button>
+
+                </div>
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- =================================================
+             CATALOGUE
+        ================================================== -->
+
+        <section
+            id="catalogueSection"
+            class="faculty-section"
+        >
+
+            <div class="page-section-header">
+
+                <div>
+
+                    <span class="eyebrow">
+                        MATLIB
+                    </span>
+
+                    <h2>
+                        Library Catalogue
+                    </h2>
+
+                    <p>
+                        Browse the complete MatLib
+                        book catalogue.
+                    </p>
+
+                </div>
+
+
+                <a
+                    href="books.html"
+                    class="dashboard-btn primary"
+                >
+                    📚 Open Catalogue
+                </a>
+
+            </div>
+
+
+            <div class="catalogue-card">
+
+                <div class="catalogue-icon">
+                    📚
+                </div>
+
+                <h3>
+                    Search MatLib Books
+                </h3>
+
+                <p>
+                    Find books by title, author,
+                    accession number or category.
+                </p>
+
+                <a
+                    href="books.html"
+                    class="dashboard-btn primary"
+                >
+                    Browse Books →
+                </a>
+
+            </div>
+
+        </section>
+
+
+    </div>
+
+</main>
+
+
+
+<!-- =========================================================
+     NEW FOLDER MODAL
+========================================================= -->
+
+<div
+    id="newFolderModal"
+    class="faculty-modal hidden"
+>
+
+    <div class="faculty-modal-box">
+
+        <button
+            class="modal-close"
+            data-close-folder-modal
+        >
+            ×
+        </button>
+
+        <span class="modal-icon">
+            📁
+        </span>
+
+        <h2>
+            Create Folder
+        </h2>
+
+        <p>
+            Create a folder inside the current
+            Google Drive location.
+        </p>
+
+        <input
+            type="text"
+            id="newFolderName"
+            placeholder="Folder name"
+            autocomplete="off"
+        >
+
+        <div
+            id="newFolderMessage"
+            class="modal-message"
+        ></div>
+
+        <div class="modal-actions">
+
+            <button
+                class="dashboard-btn secondary"
+                data-close-folder-modal
+            >
+                Cancel
+            </button>
+
+            <button
+                class="dashboard-btn primary"
+                id="confirmNewFolder"
+            >
+                Create Folder
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     UPLOAD MODAL
+========================================================= -->
+
+<div
+    id="documentUploadPanel"
+    class="faculty-modal hidden"
+>
+
+    <div class="faculty-modal-box upload-modal">
+
+        <button
+            class="modal-close"
+            data-close-document-modal
+        >
+            ×
+        </button>
+
+        <span class="modal-icon">
+            ☁
+        </span>
+
+        <h2>
+            Upload Document
+        </h2>
+
+        <p>
+            Uploading to:
+            <strong id="uploadTargetName">
+                Documents
+            </strong>
+        </p>
+
+
+        <label
+            id="documentDropZone"
+            class="drop-zone"
+        >
+
+            <input
+                type="file"
+                id="documentModalFile"
+                hidden
+            >
+
+            <div class="drop-icon">
+                ↑
+            </div>
+
+            <strong>
+                Choose a file
+            </strong>
+
+            <span>
+                or drag and drop here
+            </span>
+
+            <small>
+                Maximum file size: 25 MB
+            </small>
+
+        </label>
+
+
+        <div
+            id="selectedFileInfo"
+            class="selected-file-info hidden"
+        ></div>
+
+
+        <div
+            id="uploadProgress"
+            class="upload-progress hidden"
+        >
+
+            <div class="progress-top">
+
+                <span>
+                    Uploading...
+                </span>
+
+                <span id="uploadProgressText">
+                    0%
+                </span>
+
+            </div>
+
+            <div class="progress-track">
+
+                <div
+                    id="uploadProgressBar"
+                    class="progress-bar"
+                ></div>
+
+            </div>
+
+        </div>
+
+
+        <div class="modal-actions">
+
+            <button
+                class="dashboard-btn secondary"
+                data-close-document-modal
+            >
+                Cancel
+            </button>
+
+            <button
+                class="dashboard-btn primary"
+                id="confirmDocumentUpload"
+                disabled
+            >
+                Upload
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- =========================================================
+     TOAST
+========================================================= -->
+
+<div
+    id="facultyToast"
+    class="faculty-toast"
+>
+
+    <span class="faculty-toast-icon">
+        ✓
+    </span>
+
+    <span class="faculty-toast-text">
+        Done
+    </span>
+
+</div>
+
+
+
+<!-- =========================================================
+     SCRIPTS
+========================================================= -->
+
+<script
+    src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+></script>
+
+<script
+    src="assets/config.js"
+></script>
+
+<script
+    src="assets/faculty-dashboard.js?v=20260919fix3"
+></script>
+
+
+</body>
+</html>

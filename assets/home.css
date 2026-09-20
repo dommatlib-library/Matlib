@@ -1,0 +1,767 @@
+/* =========================================================
+   MATLIB HOME PAGE
+   BOOKSHELF BACKGROUND + FROSTED GLASS ROLE CARDS
+========================================================= */
+
+
+/* =========================================================
+   RESET
+========================================================= */
+
+* {
+
+    box-sizing: border-box;
+
+    margin: 0;
+
+    padding: 0;
+
+}
+
+
+html {
+
+    min-height: 100%;
+
+}
+
+
+body {
+
+    min-height: 100vh;
+
+}
+
+
+/* =========================================================
+   PAGE
+========================================================= */
+
+.home-page {
+
+    min-height: 100vh;
+
+    overflow-x: hidden;
+
+    color: #ffffff;
+
+    font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        sans-serif;
+
+    background: #241a13;
+
+}
+
+
+/* =========================================================
+   BACKGROUND IMAGE
+========================================================= */
+
+.home-background {
+
+    position: fixed;
+
+    inset: 0;
+
+    z-index: -3;
+
+    background-image: url(
+        "https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=2200&q=90"
+    );
+
+    background-position: center;
+
+    background-size: cover;
+
+    background-repeat: no-repeat;
+
+    transform: scale(1.04);
+
+    animation:
+        backgroundZoom 18s ease-in-out infinite alternate;
+
+}
+
+
+/* =========================================================
+   DARK BACKGROUND OVERLAY
+========================================================= */
+
+.home-overlay {
+
+    position: fixed;
+
+    inset: 0;
+
+    z-index: -2;
+
+    background:
+
+        linear-gradient(
+            90deg,
+            rgba(0, 0, 0, 0.56),
+            rgba(0, 0, 0, 0.20),
+            rgba(0, 0, 0, 0.56)
+        ),
+
+        linear-gradient(
+            180deg,
+            rgba(0, 0, 0, 0.38),
+            rgba(0, 0, 0, 0.10),
+            rgba(0, 0, 0, 0.55)
+        );
+
+}
+
+
+/* =========================================================
+   MAIN
+========================================================= */
+
+.home-main {
+
+    min-height: 100vh;
+
+    width: 100%;
+
+    max-width: 1300px;
+
+    margin: 0 auto;
+
+    padding: 42px 35px 25px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+}
+
+
+/* =========================================================
+   BRAND
+========================================================= */
+
+.home-brand {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 13px;
+
+    margin-bottom: 25px;
+
+    animation:
+        fadeDown 0.8s ease both;
+
+}
+
+
+.brand-icon {
+
+    width: 58px;
+
+    height: 58px;
+
+    display: grid;
+
+    place-items: center;
+
+    border-radius: 17px;
+
+    color: #191510;
+
+    background:
+        linear-gradient(
+            145deg,
+            #f8d982,
+            #e4b84f
+        );
+
+    box-shadow:
+        0 12px 30px rgba(0, 0, 0, 0.30);
+
+    font-size: 30px;
+
+    font-weight: 900;
+
+}
+
+
+.brand-name {
+
+    color: #ffffff;
+
+    font-size: 34px;
+
+    font-weight: 850;
+
+    letter-spacing: -1.5px;
+
+    text-shadow:
+        0 5px 20px rgba(0, 0, 0, 0.40);
+
+}
+
+
+/* =========================================================
+   HEADING
+========================================================= */
+
+.home-heading {
+
+    text-align: center;
+
+    margin-bottom: 42px;
+
+    animation:
+        fadeUp 0.9s ease 0.1s both;
+
+}
+
+
+.home-heading h1 {
+
+    color: #ffffff;
+
+    font-size: clamp(34px, 5vw, 58px);
+
+    font-weight: 850;
+
+    letter-spacing: -2px;
+
+    line-height: 1.1;
+
+    text-shadow:
+        0 7px 25px rgba(0, 0, 0, 0.45);
+
+}
+
+
+.home-heading p {
+
+    margin-top: 13px;
+
+    color: rgba(255, 255, 255, 0.82);
+
+    font-size: 17px;
+
+    font-weight: 500;
+
+}
+
+
+/* =========================================================
+   ROLE GRID
+========================================================= */
+
+.role-grid {
+
+    width: 100%;
+
+    max-width: 1050px;
+
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, minmax(0, 1fr));
+
+    gap: 32px;
+
+    animation:
+        fadeUp 1s ease 0.2s both;
+
+}
+
+
+/* =========================================================
+   ROLE CARD
+========================================================= */
+
+.role-card {
+
+    min-height: 350px;
+
+    padding: 35px 32px 32px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: flex-start;
+
+    border-radius: 27px;
+
+    border:
+        1px solid rgba(255, 255, 255, 0.68);
+
+    background:
+
+        linear-gradient(
+            145deg,
+            rgba(255, 255, 255, 0.82),
+            rgba(224, 224, 224, 0.68)
+        );
+
+    box-shadow:
+        0 22px 55px rgba(0, 0, 0, 0.35);
+
+    backdrop-filter: blur(18px);
+
+    -webkit-backdrop-filter: blur(18px);
+
+    color: #202124;
+
+    transition:
+        transform 0.35s ease,
+        box-shadow 0.35s ease,
+        background 0.35s ease;
+
+}
+
+
+.role-card:hover {
+
+    transform: translateY(-9px);
+
+    background:
+
+        linear-gradient(
+            145deg,
+            rgba(255, 255, 255, 0.91),
+            rgba(235, 235, 235, 0.78)
+        );
+
+    box-shadow:
+        0 30px 70px rgba(0, 0, 0, 0.48);
+
+}
+
+
+/* =========================================================
+   ICON
+========================================================= */
+
+.role-icon {
+
+    width: 92px;
+
+    height: 92px;
+
+    display: grid;
+
+    place-items: center;
+
+    margin-bottom: 28px;
+
+    border-radius: 23px;
+
+    background:
+        rgba(255, 255, 255, 0.35);
+
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.38);
+
+    font-size: 54px;
+
+    transition:
+        transform 0.35s ease,
+        background 0.35s ease;
+
+}
+
+
+.role-card:hover .role-icon {
+
+    transform:
+        translateY(-5px)
+        scale(1.06);
+
+    background:
+        rgba(255, 255, 255, 0.58);
+
+}
+
+
+/* =========================================================
+   ROLE NAME
+========================================================= */
+
+.role-card h2 {
+
+    min-height: 42px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    margin-bottom: 28px;
+
+    color: #252525;
+
+    font-size: 29px;
+
+    line-height: 1.2;
+
+    font-weight: 750;
+
+    letter-spacing: -0.8px;
+
+    text-align: center;
+
+}
+
+
+/* =========================================================
+   LOGIN BUTTON
+========================================================= */
+
+.login-button {
+
+    width: 100%;
+
+    min-height: 56px;
+
+    margin-top: auto;
+
+    padding: 15px 22px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 18px;
+
+    border-radius: 14px;
+
+    color: #ffffff;
+
+    background: #000000;
+
+    text-decoration: none;
+
+    font-size: 17px;
+
+    font-weight: 750;
+
+    box-shadow:
+        0 7px 15px rgba(0, 0, 0, 0.16);
+
+    transition:
+        color 0.3s ease,
+        background 0.3s ease,
+        transform 0.3s ease,
+        box-shadow 0.3s ease;
+
+}
+
+
+.login-button span {
+
+    font-size: 23px;
+
+    line-height: 1;
+
+    transition:
+        transform 0.3s ease;
+
+}
+
+
+.login-button:hover {
+
+    color: #17130f;
+
+    background: #e7b94f;
+
+    transform: translateY(-3px);
+
+    box-shadow:
+        0 12px 24px rgba(0, 0, 0, 0.25);
+
+}
+
+
+.login-button:hover span {
+
+    transform: translateX(5px);
+
+}
+
+
+.login-button:active {
+
+    transform: translateY(0);
+
+}
+
+
+/* =========================================================
+   FOOTER
+========================================================= */
+
+.home-footer {
+
+    margin-top: 35px;
+
+    color:
+        rgba(255, 255, 255, 0.70);
+
+    font-size: 13px;
+
+    font-weight: 500;
+
+    text-align: center;
+
+    animation:
+        fadeUp 1s ease 0.35s both;
+
+}
+
+
+/* =========================================================
+   ANIMATIONS
+========================================================= */
+
+@keyframes fadeDown {
+
+    from {
+
+        opacity: 0;
+
+        transform: translateY(-25px);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform: translateY(0);
+
+    }
+
+}
+
+
+@keyframes fadeUp {
+
+    from {
+
+        opacity: 0;
+
+        transform: translateY(28px);
+
+    }
+
+    to {
+
+        opacity: 1;
+
+        transform: translateY(0);
+
+    }
+
+}
+
+
+@keyframes backgroundZoom {
+
+    from {
+
+        transform: scale(1.04);
+
+    }
+
+    to {
+
+        transform: scale(1.10);
+
+    }
+
+}
+
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 950px) {
+
+    .home-main {
+
+        padding: 45px 25px;
+
+    }
+
+
+    .role-grid {
+
+        gap: 20px;
+
+    }
+
+
+    .role-card {
+
+        padding: 30px 22px 25px;
+
+    }
+
+
+    .role-card h2 {
+
+        font-size: 25px;
+
+    }
+
+}
+
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 700px) {
+
+    .home-main {
+
+        padding: 35px 18px 25px;
+
+        justify-content: flex-start;
+
+    }
+
+
+    .home-brand {
+
+        margin-bottom: 35px;
+
+    }
+
+
+    .brand-icon {
+
+        width: 50px;
+
+        height: 50px;
+
+        font-size: 26px;
+
+    }
+
+
+    .brand-name {
+
+        font-size: 29px;
+
+    }
+
+
+    .home-heading {
+
+        margin-bottom: 32px;
+
+    }
+
+
+    .home-heading h1 {
+
+        font-size: 38px;
+
+        letter-spacing: -1px;
+
+    }
+
+
+    .home-heading p {
+
+        font-size: 15px;
+
+        line-height: 1.5;
+
+    }
+
+
+    .role-grid {
+
+        grid-template-columns: 1fr;
+
+        max-width: 390px;
+
+        gap: 20px;
+
+    }
+
+
+    .role-card {
+
+        min-height: 310px;
+
+        padding: 28px;
+
+    }
+
+
+    .role-icon {
+
+        width: 82px;
+
+        height: 82px;
+
+        font-size: 48px;
+
+    }
+
+
+    .role-card h2 {
+
+        font-size: 28px;
+
+    }
+
+
+    .home-footer {
+
+        margin-top: 25px;
+
+        padding-bottom: 10px;
+
+    }
+
+}
+
+
+/* =========================================================
+   REDUCED MOTION
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+
+    * {
+
+        animation-duration: 0.01ms !important;
+
+        animation-iteration-count: 1 !important;
+
+        transition-duration: 0.01ms !important;
+
+    }
+
+}

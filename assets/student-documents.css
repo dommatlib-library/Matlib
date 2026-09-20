@@ -1,0 +1,1799 @@
+/* ============================================================
+   MatLib Student Documents
+   Google Drive-inspired layout
+============================================================ */
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+
+html,
+body {
+    min-height: 100%;
+}
+
+
+body {
+    font-family:
+        Inter,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
+
+    color: #2b241d;
+
+    background:
+        #f8f6f1;
+
+    overflow-x: hidden;
+}
+
+
+/* ============================================================
+   BACKGROUND
+============================================================ */
+
+.page-background {
+    position: fixed;
+
+    inset: 0;
+
+    z-index: -5;
+
+    background:
+        linear-gradient(
+            rgba(248, 246, 241, 0.92),
+            rgba(241, 237, 228, 0.96)
+        ),
+        url("library-bg.png");
+
+    background-size: cover;
+
+    background-position: center;
+
+    opacity: 0.72;
+}
+
+
+.page-background::after {
+    content: "";
+
+    position: absolute;
+
+    inset: 0;
+
+    background:
+        radial-gradient(
+            circle at 15% 15%,
+            rgba(230, 186, 72, 0.13),
+            transparent 32%
+        ),
+
+        radial-gradient(
+            circle at 85% 80%,
+            rgba(129, 100, 53, 0.08),
+            transparent 30%
+        );
+}
+
+
+/* ============================================================
+   HEADER
+============================================================ */
+
+.drive-header {
+    height: 68px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    padding:
+        0 22px;
+
+    background:
+        rgba(255, 255, 255, 0.92);
+
+    border-bottom:
+        1px solid
+        rgba(58, 46, 32, 0.10);
+
+    box-shadow:
+        0 2px 15px
+        rgba(55, 42, 27, 0.05);
+
+    backdrop-filter:
+        blur(18px);
+
+    position: sticky;
+
+    top: 0;
+
+    z-index: 100;
+}
+
+
+.drive-header-left {
+    display: flex;
+
+    align-items: center;
+
+    gap: 14px;
+
+    min-width: 0;
+}
+
+
+.icon-button {
+    border: none;
+
+    background:
+        transparent;
+
+    cursor: pointer;
+}
+
+
+.back-button {
+    width: 40px;
+
+    height: 40px;
+
+    border-radius: 50%;
+
+    display: grid;
+
+    place-items: center;
+
+    font-size: 22px;
+
+    color:
+        #594d40;
+
+    transition:
+        0.2s ease;
+}
+
+
+.back-button:hover {
+    background:
+        rgba(50, 42, 34, 0.08);
+
+    transform:
+        translateX(-2px);
+}
+
+
+/* ============================================================
+   MATLIB BRAND
+============================================================ */
+
+.matlib-brand {
+    display: flex;
+
+    align-items: center;
+
+    gap: 7px;
+
+    font-size: 20px;
+
+    font-weight: 800;
+
+    white-space: nowrap;
+}
+
+
+.brand-symbol {
+    font-size: 25px;
+
+    font-weight: 900;
+
+    color:
+        #d6a82f;
+}
+
+
+.brand-name {
+    color:
+        #29231d;
+}
+
+
+.header-separator {
+    width: 1px;
+
+    height: 28px;
+
+    background:
+        rgba(58, 46, 32, 0.13);
+}
+
+
+.drive-page-name {
+    color:
+        #71665a;
+
+    font-size: 14px;
+
+    font-weight: 600;
+
+    white-space: nowrap;
+}
+
+
+/* ============================================================
+   HEADER RIGHT
+============================================================ */
+
+.drive-header-right {
+    display: flex;
+
+    align-items: center;
+
+    gap: 13px;
+}
+
+
+.header-refresh {
+    width: 38px;
+
+    height: 38px;
+
+    display: grid;
+
+    place-items: center;
+
+    border: none;
+
+    border-radius: 50%;
+
+    background:
+        transparent;
+
+    color:
+        #5c5146;
+
+    font-size: 21px;
+
+    cursor: pointer;
+
+    transition:
+        0.25s ease;
+}
+
+
+.header-refresh:hover {
+    background:
+        rgba(70, 57, 42, 0.08);
+
+    transform:
+        rotate(45deg);
+}
+
+
+.drive-student {
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: flex-end;
+
+    gap: 2px;
+}
+
+
+.drive-student-name {
+    color:
+        #30271f;
+
+    font-size: 12px;
+
+    font-weight: 750;
+}
+
+
+.drive-student-email {
+    color:
+        #9a8e80;
+
+    font-size: 10px;
+}
+
+
+.drive-logout {
+    border:
+        1px solid
+        rgba(62, 49, 35, 0.14);
+
+    border-radius: 9px;
+
+    padding:
+        8px 13px;
+
+    background:
+        white;
+
+    color:
+        #504437;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        0.2s ease;
+}
+
+
+.drive-logout:hover {
+    background:
+        #28221c;
+
+    color: white;
+
+    border-color:
+        #28221c;
+}
+
+
+/* ============================================================
+   MAIN
+============================================================ */
+
+.drive-main {
+    width:
+        min(
+            1200px,
+            calc(100% - 48px)
+        );
+
+    margin:
+        0 auto;
+
+    padding:
+        34px 0 70px;
+}
+
+
+/* ============================================================
+   TOP
+============================================================ */
+
+.drive-top {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    gap: 25px;
+
+    margin-bottom: 25px;
+}
+
+
+.drive-heading h1 {
+    font-family:
+        Georgia,
+        "Times New Roman",
+        serif;
+
+    color:
+        #28211b;
+
+    font-size:
+        clamp(
+            30px,
+            4vw,
+            42px
+        );
+
+    letter-spacing:
+        -1.2px;
+
+    margin-bottom: 6px;
+}
+
+
+.drive-heading p {
+    color:
+        #8a7e70;
+
+    font-size: 12px;
+}
+
+
+/* ============================================================
+   STUDENT PROFILE
+============================================================ */
+
+.student-mini-profile {
+    display: flex;
+
+    align-items: center;
+
+    gap: 11px;
+
+    padding:
+        9px 13px;
+
+    border-radius: 13px;
+
+    background:
+        rgba(255, 255, 255, 0.68);
+
+    border:
+        1px solid
+        rgba(71, 56, 39, 0.09);
+
+    box-shadow:
+        0 4px 18px
+        rgba(55, 42, 27, 0.05);
+}
+
+
+.mini-avatar {
+    width: 38px;
+
+    height: 38px;
+
+    display: grid;
+
+    place-items: center;
+
+    border-radius: 50%;
+
+    background:
+        #29231d;
+
+    color:
+        #f2cf67;
+
+    font-size: 14px;
+
+    font-weight: 900;
+}
+
+
+.student-mini-profile > div:last-child {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 2px;
+}
+
+
+.student-mini-profile strong {
+    font-size: 12px;
+
+    color:
+        #342a21;
+}
+
+
+.student-mini-profile small {
+    color:
+        #948779;
+
+    font-size: 9px;
+}
+
+
+/* ============================================================
+   TOOLBAR
+============================================================ */
+
+.drive-toolbar {
+    min-height: 48px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    padding:
+        0 6px;
+
+    margin-bottom: 4px;
+
+    border-bottom:
+        1px solid
+        rgba(66, 52, 36, 0.09);
+}
+
+
+.toolbar-left {
+    display: flex;
+
+    align-items: center;
+}
+
+
+.toolbar-button {
+    border: none;
+
+    border-radius: 8px;
+
+    padding:
+        8px 12px;
+
+    background:
+        transparent;
+
+    color:
+        #71665b;
+
+    font-family: inherit;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+
+.toolbar-button.active {
+    background:
+        rgba(211, 168, 62, 0.13);
+
+    color:
+        #735522;
+}
+
+
+.toolbar-button span {
+    margin-right: 5px;
+}
+
+
+.document-count {
+    color:
+        #978b7d;
+
+    font-size: 10px;
+
+    font-weight: 600;
+}
+
+
+/* ============================================================
+   BREADCRUMB
+============================================================ */
+
+.drive-breadcrumb {
+    height: 43px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 8px;
+
+    color:
+        #75695d;
+
+    font-size: 11px;
+
+    font-weight: 650;
+}
+
+
+.breadcrumb-home {
+    font-size: 14px;
+}
+
+
+.breadcrumb-arrow {
+    color:
+        #b3a797;
+
+    font-size: 17px;
+}
+
+
+/* ============================================================
+   LOADING
+============================================================ */
+
+.documents-loading {
+    min-height: 310px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    flex-direction: column;
+
+    gap: 13px;
+
+    color:
+        #897d70;
+
+    font-size: 12px;
+}
+
+
+.drive-loader {
+    width: 34px;
+
+    height: 34px;
+
+    border:
+        3px solid
+        rgba(74, 59, 42, 0.10);
+
+    border-top-color:
+        #b38a36;
+
+    border-radius: 50%;
+
+    animation:
+        driveSpin
+        0.8s linear infinite;
+}
+
+
+@keyframes driveSpin {
+
+    to {
+        transform:
+            rotate(360deg);
+    }
+
+}
+
+
+/* ============================================================
+   MESSAGE
+============================================================ */
+
+.documents-message {
+    padding:
+        13px 15px;
+
+    border-radius: 10px;
+
+    margin-bottom: 14px;
+
+    font-size: 12px;
+
+    font-weight: 650;
+}
+
+
+.documents-message.error {
+    background:
+        rgba(178, 64, 49, 0.08);
+
+    color:
+        #96382e;
+
+    border:
+        1px solid
+        rgba(178, 64, 49, 0.13);
+}
+
+
+/* ============================================================
+   DRIVE LIST
+============================================================ */
+
+.drive-list {
+    width: 100%;
+
+    border:
+        1px solid
+        rgba(65, 51, 35, 0.10);
+
+    border-radius: 13px;
+
+    overflow: visible;
+
+    background:
+        rgba(255, 255, 255, 0.79);
+
+    box-shadow:
+        0 8px 28px
+        rgba(54, 41, 26, 0.055);
+
+    backdrop-filter:
+        blur(15px);
+
+    animation:
+        listAppear
+        0.4s ease;
+}
+
+
+@keyframes listAppear {
+
+    from {
+        opacity: 0;
+
+        transform:
+            translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+
+        transform:
+            translateY(0);
+    }
+
+}
+
+
+/* ============================================================
+   LIST HEADER
+============================================================ */
+
+.drive-list-header {
+    min-height: 43px;
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(300px, 1fr)
+        150px
+        145px
+        54px;
+
+    align-items: center;
+
+    padding:
+        0 8px 0 17px;
+
+    border-bottom:
+        1px solid
+        rgba(64, 50, 34, 0.09);
+
+    color:
+        #95897b;
+
+    font-size: 10px;
+
+    font-weight: 800;
+}
+
+
+/* ============================================================
+   ROW
+============================================================ */
+
+.drive-row {
+    min-height: 66px;
+
+    display: grid;
+
+    grid-template-columns:
+        minmax(300px, 1fr)
+        150px
+        145px
+        54px;
+
+    align-items: center;
+
+    padding:
+        0 8px 0 17px;
+
+    border-bottom:
+        1px solid
+        rgba(64, 50, 34, 0.065);
+
+    cursor: pointer;
+
+    transition:
+        background 0.18s ease,
+        transform 0.18s ease;
+}
+
+
+.drive-row:last-child {
+    border-bottom: none;
+}
+
+
+.drive-row:hover {
+    background:
+        rgba(229, 216, 194, 0.26);
+}
+
+
+.drive-row:hover
+.three-dot-btn {
+    opacity: 1;
+}
+
+
+/* ============================================================
+   NAME
+============================================================ */
+
+.drive-name-cell {
+    min-width: 0;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 13px;
+}
+
+
+.drive-file-icon {
+    width: 37px;
+
+    height: 37px;
+
+    flex:
+        0 0 37px;
+
+    display: grid;
+
+    place-items: center;
+
+    border-radius: 9px;
+
+    font-size: 19px;
+
+    background:
+        #f1ece4;
+}
+
+
+.drive-file-icon.folder {
+    background:
+        rgba(225, 180, 63, 0.14);
+}
+
+
+.drive-file-icon.pdf {
+    background:
+        rgba(190, 67, 50, 0.09);
+}
+
+
+.drive-file-icon.document {
+    background:
+        rgba(63, 101, 156, 0.09);
+}
+
+
+.drive-file-icon.image {
+    background:
+        rgba(83, 137, 91, 0.09);
+}
+
+
+.drive-name {
+    min-width: 0;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+    color:
+        #3b3025;
+
+    font-size: 12px;
+
+    font-weight: 650;
+}
+
+
+.drive-row:hover .drive-name {
+    color:
+        #6e501f;
+}
+
+
+/* ============================================================
+   TYPE / DATE
+============================================================ */
+
+.drive-type,
+.drive-date {
+    color:
+        #978b7e;
+
+    font-size: 10px;
+
+    font-weight: 550;
+}
+
+
+/* ============================================================
+   THREE DOT
+============================================================ */
+
+.drive-menu-cell {
+    display: flex;
+
+    justify-content: center;
+}
+
+
+.three-dot-btn {
+    width: 32px;
+
+    height: 32px;
+
+    display: grid;
+
+    place-items: center;
+
+    border: none;
+
+    border-radius: 50%;
+
+    background:
+        transparent;
+
+    color:
+        #776b5f;
+
+    font-size: 19px;
+
+    cursor: pointer;
+
+    opacity: 0.15;
+
+    transition:
+        0.18s ease;
+}
+
+
+.three-dot-btn:hover {
+    background:
+        rgba(57, 45, 32, 0.09);
+
+    color:
+        #31271f;
+
+    opacity: 1;
+}
+
+
+/* ============================================================
+   CONTEXT MENU
+============================================================ */
+
+.context-menu {
+    position: fixed;
+
+    z-index: 1000;
+
+    width: 180px;
+
+    padding:
+        6px;
+
+    border-radius: 11px;
+
+    background:
+        white;
+
+    border:
+        1px solid
+        rgba(55, 43, 30, 0.11);
+
+    box-shadow:
+        0 12px 35px
+        rgba(45, 33, 20, 0.17);
+
+    animation:
+        menuAppear
+        0.14s ease;
+}
+
+
+@keyframes menuAppear {
+
+    from {
+        opacity: 0;
+
+        transform:
+            scale(0.96)
+            translateY(-3px);
+    }
+
+    to {
+        opacity: 1;
+
+        transform:
+            scale(1)
+            translateY(0);
+    }
+
+}
+
+
+.context-menu button,
+.menu-disabled {
+    width: 100%;
+
+    min-height: 39px;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 11px;
+
+    padding:
+        0 11px;
+
+    border: none;
+
+    border-radius: 7px;
+
+    background:
+        transparent;
+
+    color:
+        #40352b;
+
+    font-family: inherit;
+
+    font-size: 11px;
+
+    font-weight: 650;
+
+    text-align: left;
+
+    cursor: pointer;
+}
+
+
+.context-menu button:hover {
+    background:
+        #f4efe6;
+}
+
+
+.context-menu button span,
+.menu-disabled span {
+    width: 20px;
+
+    text-align: center;
+
+    font-size: 15px;
+}
+
+
+.menu-disabled {
+    color:
+        #988c7d;
+
+    cursor: default;
+}
+
+
+/* ============================================================
+   EMPTY
+============================================================ */
+
+.drive-empty {
+    min-height: 330px;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    flex-direction: column;
+
+    text-align: center;
+
+    border:
+        1px solid
+        rgba(67, 52, 35, 0.10);
+
+    border-radius: 14px;
+
+    background:
+        rgba(255, 255, 255, 0.70);
+
+    box-shadow:
+        0 8px 28px
+        rgba(54, 41, 26, 0.05);
+}
+
+
+.empty-drive-icon {
+    width: 66px;
+
+    height: 66px;
+
+    display: grid;
+
+    place-items: center;
+
+    border-radius: 18px;
+
+    background:
+        #eee8de;
+
+    font-size: 28px;
+
+    margin-bottom: 16px;
+}
+
+
+.drive-empty h2 {
+    font-family:
+        Georgia,
+        "Times New Roman",
+        serif;
+
+    font-size: 23px;
+
+    margin-bottom: 7px;
+
+    color:
+        #33281f;
+}
+
+
+.drive-empty p {
+    color:
+        #928679;
+
+    font-size: 11px;
+
+    margin-bottom: 18px;
+}
+
+
+.empty-refresh {
+    border: none;
+
+    border-radius: 8px;
+
+    padding:
+        9px 15px;
+
+    background:
+        #28221c;
+
+    color: white;
+
+    font-size: 11px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+}
+
+
+/* ============================================================
+   SHARE MODAL OVERLAY
+============================================================ */
+
+.modal-overlay {
+    position: fixed;
+
+    inset: 0;
+
+    z-index: 2000;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    padding: 20px;
+
+    background:
+        rgba(29, 24, 19, 0.38);
+
+    backdrop-filter:
+        blur(5px);
+
+    animation:
+        overlayAppear
+        0.2s ease;
+}
+
+
+@keyframes overlayAppear {
+
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+
+}
+
+
+/* ============================================================
+   SHARE MODAL
+============================================================ */
+
+.share-modal {
+    width:
+        min(
+            440px,
+            100%
+        );
+
+    position: relative;
+
+    padding:
+        28px;
+
+    border-radius: 20px;
+
+    background:
+        #fffdf9;
+
+    border:
+        1px solid
+        rgba(68, 52, 34, 0.10);
+
+    box-shadow:
+        0 30px 80px
+        rgba(37, 27, 17, 0.24);
+
+    animation:
+        modalAppear
+        0.25s ease;
+}
+
+
+@keyframes modalAppear {
+
+    from {
+        opacity: 0;
+
+        transform:
+            translateY(14px)
+            scale(0.97);
+    }
+
+    to {
+        opacity: 1;
+
+        transform:
+            translateY(0)
+            scale(1);
+    }
+
+}
+
+
+.modal-close {
+    position: absolute;
+
+    top: 13px;
+
+    right: 13px;
+
+    width: 32px;
+
+    height: 32px;
+
+    border: none;
+
+    border-radius: 50%;
+
+    background:
+        transparent;
+
+    color:
+        #8a7e70;
+
+    font-size: 22px;
+
+    cursor: pointer;
+}
+
+
+.modal-close:hover {
+    background:
+        rgba(57, 45, 32, 0.08);
+
+    color:
+        #33281f;
+}
+
+
+.share-modal-icon {
+    width: 48px;
+
+    height: 48px;
+
+    display: grid;
+
+    place-items: center;
+
+    border-radius: 14px;
+
+    background:
+        rgba(211, 168, 62, 0.14);
+
+    font-size: 21px;
+
+    margin-bottom: 15px;
+}
+
+
+.share-modal h2 {
+    font-family:
+        Georgia,
+        "Times New Roman",
+        serif;
+
+    color:
+        #2d241c;
+
+    font-size: 24px;
+
+    margin-bottom: 6px;
+}
+
+
+.share-file-name {
+    max-width: 350px;
+
+    overflow: hidden;
+
+    white-space: nowrap;
+
+    text-overflow: ellipsis;
+
+    color:
+        #8c7f70;
+
+    font-size: 11px;
+
+    margin-bottom: 24px;
+}
+
+
+/* ============================================================
+   RECIPIENT
+============================================================ */
+
+.recipient-label {
+    margin-bottom: 7px;
+
+    color:
+        #4e4135;
+
+    font-size: 11px;
+
+    font-weight: 800;
+}
+
+
+.recipient-list {
+    display: flex;
+
+    flex-direction: column;
+
+    gap: 8px;
+}
+
+
+.recipient-row {
+    display: flex;
+
+    align-items: center;
+
+    gap: 7px;
+}
+
+
+.recipient-input {
+    flex: 1;
+
+    height: 43px;
+
+    padding:
+        0 12px;
+
+    border:
+        1px solid
+        rgba(69, 52, 35, 0.15);
+
+    border-radius: 9px;
+
+    outline: none;
+
+    background:
+        #fff;
+
+    color:
+        #30271f;
+
+    font-family: inherit;
+
+    font-size: 12px;
+
+    transition:
+        0.2s ease;
+}
+
+
+.recipient-input:focus {
+    border-color:
+        #bc8d31;
+
+    box-shadow:
+        0 0 0 3px
+        rgba(188, 141, 49, 0.11);
+}
+
+
+.remove-recipient {
+    width: 34px;
+
+    height: 34px;
+
+    display: grid;
+
+    place-items: center;
+
+    border: none;
+
+    border-radius: 50%;
+
+    background:
+        transparent;
+
+    color:
+        #9a8c7d;
+
+    font-size: 19px;
+
+    cursor: pointer;
+}
+
+
+.remove-recipient:hover {
+    background:
+        rgba(178, 64, 49, 0.08);
+
+    color:
+        #a03c30;
+}
+
+
+.add-recipient-btn {
+    border: none;
+
+    background:
+        transparent;
+
+    color:
+        #806126;
+
+    font-family: inherit;
+
+    font-size: 11px;
+
+    font-weight: 750;
+
+    cursor: pointer;
+
+    padding:
+        10px 0;
+
+    margin-bottom: 10px;
+}
+
+
+.add-recipient-btn:hover {
+    text-decoration:
+        underline;
+}
+
+
+/* ============================================================
+   NOTE
+============================================================ */
+
+.share-note {
+    display: flex;
+
+    align-items: flex-start;
+
+    gap: 8px;
+
+    padding:
+        11px 12px;
+
+    border-radius: 9px;
+
+    background:
+        #f6f1e8;
+
+    color:
+        #817567;
+
+    font-size: 10px;
+
+    line-height: 1.5;
+
+    margin-bottom: 21px;
+}
+
+
+.share-note span {
+    color:
+        #aa812e;
+
+    font-size: 13px;
+}
+
+
+/* ============================================================
+   MODAL ACTIONS
+============================================================ */
+
+.share-modal-actions {
+    display: flex;
+
+    justify-content: flex-end;
+
+    gap: 8px;
+}
+
+
+.cancel-share-btn,
+.send-share-btn {
+    min-width: 80px;
+
+    height: 40px;
+
+    padding:
+        0 15px;
+
+    border-radius: 9px;
+
+    font-family: inherit;
+
+    font-size: 11px;
+
+    font-weight: 750;
+
+    cursor: pointer;
+}
+
+
+.cancel-share-btn {
+    border:
+        1px solid
+        rgba(69, 52, 35, 0.13);
+
+    background:
+        white;
+
+    color:
+        #5e5144;
+}
+
+
+.cancel-share-btn:hover {
+    background:
+        #f4f0e9;
+}
+
+
+.send-share-btn {
+    border:
+        1px solid
+        #28221c;
+
+    background:
+        #28221c;
+
+    color:
+        white;
+}
+
+
+.send-share-btn:hover {
+    background:
+        #43372c;
+
+    transform:
+        translateY(-1px);
+
+    box-shadow:
+        0 5px 15px
+        rgba(40, 34, 28, 0.16);
+}
+
+
+/* ============================================================
+   MOBILE
+============================================================ */
+
+@media (
+    max-width: 760px
+) {
+
+    .drive-header {
+        height: 62px;
+
+        padding:
+            0 12px;
+    }
+
+
+    .drive-page-name,
+    .header-separator {
+        display: none;
+    }
+
+
+    .drive-header-left {
+        gap: 8px;
+    }
+
+
+    .matlib-brand {
+        font-size: 18px;
+    }
+
+
+    .brand-symbol {
+        font-size: 22px;
+    }
+
+
+    .drive-header-right {
+        gap: 5px;
+    }
+
+
+    .drive-student {
+        display: none;
+    }
+
+
+    .drive-logout {
+        padding:
+            7px 10px;
+
+        font-size: 10px;
+    }
+
+
+    .drive-main {
+        width:
+            calc(100% - 24px);
+
+        padding-top:
+            25px;
+    }
+
+
+    .drive-top {
+        align-items:
+            flex-start;
+
+        flex-direction:
+            column;
+    }
+
+
+    .student-mini-profile {
+        width:
+            100%;
+    }
+
+
+    .drive-list-header {
+        display: none;
+    }
+
+
+    .drive-row {
+        min-height:
+            67px;
+
+        grid-template-columns:
+            minmax(0, 1fr)
+            42px;
+
+        padding:
+            0 7px 0 12px;
+    }
+
+
+    .drive-type,
+    .drive-date {
+        display: none;
+    }
+
+
+    .three-dot-btn {
+        opacity: 1;
+    }
+
+
+    .drive-file-icon {
+        width:
+            34px;
+
+        height:
+            34px;
+
+        flex-basis:
+            34px;
+
+        font-size:
+            17px;
+    }
+
+
+    .drive-name {
+        font-size:
+            11px;
+    }
+
+
+    .share-modal {
+        padding:
+            24px 20px;
+    }
+
+}
+
+
+/* ============================================================
+   SMALL MOBILE
+============================================================ */
+
+@media (
+    max-width: 420px
+) {
+
+    .drive-heading h1 {
+        font-size:
+            32px;
+    }
+
+
+    .breadcrumb-home {
+        display:
+            none;
+    }
+
+
+    .drive-breadcrumb {
+        padding-left:
+            3px;
+    }
+
+
+    .share-modal h2 {
+        font-size:
+            21px;
+    }
+
+}

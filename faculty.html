@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="MatLib Faculty Portal"
+    >
+
+    <title>Faculty Portal | MatLib</title>
+
+    <link
+        rel="stylesheet"
+        href="assets/faculty.css"
+    >
+
+</head>
+
+
+<body>
+
+    <!-- =====================================================
+         ANIMATED BACKGROUND
+    ====================================================== -->
+
+    <div class="background">
+
+        <div class="background-overlay"></div>
+
+        <div class="glow glow-one"></div>
+        <div class="glow glow-two"></div>
+        <div class="glow glow-three"></div>
+
+        <div class="floating-shape shape-one"></div>
+        <div class="floating-shape shape-two"></div>
+        <div class="floating-shape shape-three"></div>
+
+    </div>
+
+
+    <!-- =====================================================
+         HEADER
+    ====================================================== -->
+
+    <header class="topbar">
+
+        <a
+            href="index.html"
+            class="brand"
+        >
+
+            <span class="brand-mark">
+                √x
+            </span>
+
+            <span class="brand-text">
+                MatLib
+            </span>
+
+        </a>
+
+
+        <a
+            href="index.html"
+            class="home-btn"
+        >
+
+            <span class="home-icon">
+                ←
+            </span>
+
+            <span>
+                Home
+            </span>
+
+        </a>
+
+    </header>
+
+
+    <!-- =====================================================
+         MAIN
+    ====================================================== -->
+
+    <main class="page">
+
+        <!-- LEFT VISUAL PANEL -->
+
+        <section class="visual-panel">
+
+            <div class="visual-content">
+
+                <div class="visual-badge">
+
+                    <span class="pulse-dot"></span>
+
+                    MATLIB FACULTY PORTAL
+
+                </div>
+
+
+                <h1>
+
+                    Empowering
+                    <span>Faculty.</span>
+
+                    <br>
+
+                    Connecting
+                    <span>Knowledge.</span>
+
+                </h1>
+
+
+                <p>
+
+                    Access the MatLib digital library,
+                    manage your borrowed books, submit requests,
+                    and access academic resources from one secure
+                    faculty portal.
+
+                </p>
+
+
+                <div class="feature-list">
+
+                    <div class="feature">
+
+                        <div class="feature-icon">
+                            📚
+                        </div>
+
+                        <div>
+
+                            <strong>
+                                Smart Library Access
+                            </strong>
+
+                            <span>
+                                Search and request books easily.
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="feature">
+
+                        <div class="feature-icon">
+                            ☁
+                        </div>
+
+                        <div>
+
+                            <strong>
+                                Academic Documents
+                            </strong>
+
+                            <span>
+                                Access your faculty resources.
+                            </span>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="feature">
+
+                        <div class="feature-icon">
+                            🔐
+                        </div>
+
+                        <div>
+
+                            <strong>
+                                Secure Access
+                            </strong>
+
+                            <span>
+                                Protected faculty authentication.
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="visual-footer">
+
+                    <span class="footer-line"></span>
+
+                    <span>
+                        Mathematics • Knowledge • Library
+                    </span>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             AUTH CARD
+        ================================================== -->
+
+        <section class="auth-wrapper">
+
+            <div class="auth-card">
+
+
+                <!-- CARD HEADER -->
+
+                <div class="auth-header">
+
+                    <div class="auth-logo">
+                        √x
+                    </div>
+
+
+                    <div>
+
+                        <span class="auth-kicker">
+                            MATLIB
+                        </span>
+
+                        <h2>
+                            Faculty Portal
+                        </h2>
+
+                        <p>
+                            Welcome back. Continue to your library.
+                        </p>
+
+                    </div>
+
+                </div>
+
+
+                <!-- =================================================
+                     TABS
+                ================================================== -->
+
+                <div class="tabs">
+
+                    <button
+                        type="button"
+                        class="tab active"
+                        data-tab="login"
+                    >
+                        Login
+                    </button>
+
+
+                    <button
+                        type="button"
+                        class="tab"
+                        data-tab="register"
+                    >
+                        Register
+                    </button>
+
+
+                    <div
+                        class="tab-indicator"
+                        id="tabIndicator"
+                    ></div>
+
+                </div>
+
+
+                <!-- =================================================
+                     LOGIN PANEL
+                ================================================== -->
+
+                <form
+                    id="facultyLoginForm"
+                    class="auth-panel active"
+                    data-panel="login"
+                    autocomplete="on"
+                >
+
+                    <div class="panel-heading">
+
+                        <span class="mini-label">
+                            FACULTY ACCESS
+                        </span>
+
+                        <h3>
+                            Sign in to MatLib
+                        </h3>
+
+                        <p>
+                            Use your approved Faculty ID and password.
+                        </p>
+
+                    </div>
+
+
+                    <!-- FACULTY ID -->
+
+                    <div class="field">
+
+                        <label for="facultyLoginId">
+                            Faculty ID
+                        </label>
+
+                        <div class="input-wrap">
+
+                            <span class="input-icon">
+                                ID
+                            </span>
+
+                            <input
+                                id="facultyLoginId"
+                                type="text"
+                                placeholder="Enter Faculty ID"
+                                autocomplete="username"
+                                maxlength="40"
+                                required
+                            >
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- PASSWORD -->
+
+                    <div class="field">
+
+                        <label for="facultyLoginPassword">
+                            Password
+                        </label>
+
+                        <div class="input-wrap">
+
+                            <span class="input-icon">
+                                ●
+                            </span>
+
+                            <input
+                                id="facultyLoginPassword"
+                                type="password"
+                                placeholder="Enter password"
+                                autocomplete="current-password"
+                                required
+                            >
+
+                            <button
+                                type="button"
+                                class="password-toggle"
+                                data-target="facultyLoginPassword"
+                                aria-label="Show password"
+                            >
+                                Show
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- LOGIN BUTTON -->
+
+                    <button
+                        type="submit"
+                        class="submit-btn"
+                        id="facultyLoginButton"
+                    >
+
+                        <span class="btn-text">
+                            Login to MatLib
+                        </span>
+
+                        <span class="btn-loader"></span>
+
+                        <span class="btn-arrow">
+                            →
+                        </span>
+
+                    </button>
+
+
+                    <!-- MESSAGE -->
+
+                    <div
+                        id="facultyLoginMessage"
+                        class="form-message"
+                        aria-live="polite"
+                    ></div>
+
+
+                    <div class="security-note">
+
+                        <span>
+                            🔒
+                        </span>
+
+                        <span>
+                            Your faculty account must be approved
+                            by the administrator before login.
+                        </span>
+
+                    </div>
+
+                </form>
+
+
+                <!-- =================================================
+                     REGISTER PANEL
+                ================================================== -->
+
+                <form
+                    id="facultyRegisterForm"
+                    class="auth-panel"
+                    data-panel="register"
+                    autocomplete="off"
+                >
+
+                    <div class="panel-heading">
+
+                        <span class="mini-label">
+                            NEW FACULTY
+                        </span>
+
+                        <h3>
+                            Create your account
+                        </h3>
+
+                        <p>
+                            Submit your details for administrator approval.
+                        </p>
+
+                    </div>
+
+
+                    <!-- APPROVAL NOTICE -->
+
+                    <div class="approval-box">
+
+                        <div class="approval-icon">
+                            ✓
+                        </div>
+
+                        <div>
+
+                            <strong>
+                                Admin approval required
+                            </strong>
+
+                            <p>
+                                Your account will remain pending until
+                                the library administrator approves it.
+                            </p>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- NAME + FACULTY ID -->
+
+                    <div class="two-fields">
+
+                        <div class="field">
+
+                            <label for="facultyName">
+                                Full Name
+                            </label>
+
+                            <div class="input-wrap">
+
+                                <span class="input-icon">
+                                    A
+                                </span>
+
+                                <input
+                                    id="facultyName"
+                                    type="text"
+                                    placeholder="Full name"
+                                    maxlength="120"
+                                    required
+                                >
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="field">
+
+                            <label for="facultyId">
+                                Faculty ID
+                            </label>
+
+                            <div class="input-wrap">
+
+                                <span class="input-icon">
+                                    ID
+                                </span>
+
+                                <input
+                                    id="facultyId"
+                                    type="text"
+                                    placeholder="Faculty ID"
+                                    maxlength="40"
+                                    required
+                                >
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- DESIGNATION -->
+
+                    <div class="field">
+
+                        <label for="facultyDesignation">
+                            Designation
+                        </label>
+
+                        <div class="input-wrap select-wrap">
+
+                            <span class="input-icon">
+                                ✦
+                            </span>
+
+                            <select
+                                id="facultyDesignation"
+                                required
+                            >
+
+                                <option value="">
+                                    Select designation
+                                </option>
+
+                                <option value="Teaching Fellow">
+                                    Teaching Fellow
+                                </option>
+
+                                <option value="Guest Faculty">
+                                    Guest Faculty
+                                </option>
+
+                                <option value="Research Scholar">
+                                    Research Scholar
+                                </option>
+
+                                <option value="Emeritus Professor">
+                                    Emeritus Professor
+                                </option>
+
+                                <option value="Professor">
+                                    Professor
+                                </option>
+
+                                <option value="Assistant Professor">
+                                    Assistant Professor
+                                </option>
+
+                                <option value="Associate Professor">
+                                    Associate Professor
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- PHONE + EMAIL -->
+
+                    <div class="two-fields">
+
+                        <div class="field">
+
+                            <label for="facultyPhone">
+                                Phone
+                            </label>
+
+                            <div class="input-wrap">
+
+                                <span class="input-icon">
+                                    #
+                                </span>
+
+                                <input
+                                    id="facultyPhone"
+                                    type="tel"
+                                    placeholder="Phone"
+                                    maxlength="20"
+                                >
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="field">
+
+                            <label for="facultyEmail">
+                                Email
+                            </label>
+
+                            <div class="input-wrap">
+
+                                <span class="input-icon">
+                                    @
+                                </span>
+
+                                <input
+                                    id="facultyEmail"
+                                    type="email"
+                                    placeholder="Email"
+                                    autocomplete="email"
+                                    required
+                                >
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- PASSWORD -->
+
+                    <div class="two-fields">
+
+                        <div class="field">
+
+                            <label for="facultyPassword">
+                                Password
+                            </label>
+
+                            <div class="input-wrap">
+
+                                <span class="input-icon">
+                                    ●
+                                </span>
+
+                                <input
+                                    id="facultyPassword"
+                                    type="password"
+                                    placeholder="Create password"
+                                    minlength="8"
+                                    required
+                                >
+
+                                <button
+                                    type="button"
+                                    class="password-toggle"
+                                    data-target="facultyPassword"
+                                >
+                                    Show
+                                </button>
+
+                            </div>
+
+                        </div>
+
+
+                        <div class="field">
+
+                            <label for="facultyConfirmPassword">
+                                Confirm Password
+                            </label>
+
+                            <div class="input-wrap">
+
+                                <span class="input-icon">
+                                    ●
+                                </span>
+
+                                <input
+                                    id="facultyConfirmPassword"
+                                    type="password"
+                                    placeholder="Confirm password"
+                                    minlength="8"
+                                    required
+                                >
+
+                                <button
+                                    type="button"
+                                    class="password-toggle"
+                                    data-target="facultyConfirmPassword"
+                                >
+                                    Show
+                                </button>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+
+                    <!-- PASSWORD STRENGTH -->
+
+                    <div class="password-strength">
+
+                        <div class="strength-bars">
+
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
+
+                        </div>
+
+                        <span id="passwordStrengthText">
+                            Use at least 8 characters
+                        </span>
+
+                    </div>
+
+
+                    <!-- REGISTER BUTTON -->
+
+                    <button
+                        type="submit"
+                        class="submit-btn"
+                        id="facultyRegisterButton"
+                    >
+
+                        <span class="btn-text">
+                            Submit for Approval
+                        </span>
+
+                        <span class="btn-loader"></span>
+
+                        <span class="btn-arrow">
+                            →
+                        </span>
+
+                    </button>
+
+
+                    <!-- MESSAGE -->
+
+                    <div
+                        id="facultyRegisterMessage"
+                        class="form-message"
+                        aria-live="polite"
+                    ></div>
+
+
+                    <div class="security-note">
+
+                        <span>
+                            🛡
+                        </span>
+
+                        <span>
+                            Your password is securely handled by
+                            Supabase Authentication.
+                        </span>
+
+                    </div>
+
+                </form>
+
+
+                <!-- CARD FOOTER -->
+
+                <div class="auth-footer">
+
+                    <span>
+                        √x MatLib
+                    </span>
+
+                    <span class="footer-dot">
+                        •
+                    </span>
+
+                    <span>
+                        Secure Library Management
+                    </span>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- =====================================================
+         SUPABASE
+    ====================================================== -->
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script src="assets/config.js"></script>
+
+    <script src="assets/faculty.js"></script>
+
+</body>
+
+</html>

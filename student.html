@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="theme-color"
+        content="#e5b84f"
+    >
+
+    <meta
+        name="description"
+        content="MatLib Student Portal"
+    >
+
+    <title>
+        MatLib - Student Portal
+    </title>
+
+
+    <!-- MATLIB APP ICON -->
+
+    <link
+        rel="icon"
+        type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%23e5b84f'/%3E%3Ctext x='50' y='64' font-size='43' font-family='Arial' font-weight='900' text-anchor='middle' fill='%23181411'%3E√x%3C/text%3E%3C/svg%3E"
+    >
+
+
+    <!-- OPTIONAL APPLE ICON -->
+
+    <link
+        rel="apple-touch-icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='25' fill='%23e5b84f'/%3E%3Ctext x='50' y='64' font-size='43' font-family='Arial' font-weight='900' text-anchor='middle' fill='%23181411'%3E√x%3C/text%3E%3C/svg%3E"
+    >
+
+
+    <!-- STUDENT STYLESHEET -->
+
+    <link
+        rel="stylesheet"
+        href="assets/student.css"
+    >
+
+</head>
+
+
+<body>
+
+
+    <!-- =====================================================
+         STUDENT LOGIN
+    ====================================================== -->
+
+    <section
+        id="studentLoginPage"
+        class="student-page"
+    >
+
+        <div class="login-background-glow glow-one"></div>
+
+        <div class="login-background-glow glow-two"></div>
+
+
+        <div class="student-login-card">
+
+
+            <!-- LOGO -->
+
+            <div class="student-logo">
+
+                <span class="logo-symbol">
+                    √x
+                </span>
+
+                <span class="logo-name">
+                    MatLib
+                </span>
+
+            </div>
+
+
+            <div class="login-eyebrow">
+                MATLIB LIBRARY
+            </div>
+
+
+            <h1>
+                Student Portal
+            </h1>
+
+
+            <p class="student-subtitle">
+                Enter your details to access
+                the MatLib student portal.
+            </p>
+
+
+            <!-- LOGIN FORM -->
+
+            <form
+                id="studentLoginForm"
+            >
+
+
+                <!-- NAME -->
+
+                <div class="input-group">
+
+                    <label
+                        for="studentName"
+                    >
+                        Student Name
+                    </label>
+
+                    <div class="input-wrapper">
+
+                        <span class="input-icon">
+                            ◉
+                        </span>
+
+                        <input
+                            type="text"
+                            id="studentName"
+                            name="studentName"
+                            placeholder="Enter your name"
+                            autocomplete="name"
+                            required
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <!-- ROLL NUMBER -->
+
+                <div class="input-group">
+
+                    <label
+                        for="studentRollNo"
+                    >
+                        Roll Number
+                    </label>
+
+                    <div class="input-wrapper">
+
+                        <span class="input-icon">
+                            #
+                        </span>
+
+                        <input
+                            type="text"
+                            id="studentRollNo"
+                            name="studentRollNo"
+                            placeholder="Enter your roll number"
+                            autocomplete="off"
+                            required
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <!-- EMAIL -->
+
+                <div class="input-group">
+
+                    <label
+                        for="studentEmail"
+                    >
+                        Email ID
+                    </label>
+
+                    <div class="input-wrapper">
+
+                        <span class="input-icon">
+                            @
+                        </span>
+
+                        <input
+                            type="email"
+                            id="studentEmail"
+                            name="studentEmail"
+                            placeholder="Enter your email ID"
+                            autocomplete="email"
+                            required
+                        >
+
+                    </div>
+
+                </div>
+
+
+                <!-- LOGIN BUTTON -->
+
+                <button
+                    type="submit"
+                    class="student-login-btn"
+                >
+
+                    <span>
+                        Continue to Portal
+                    </span>
+
+                    <span class="button-arrow">
+                        →
+                    </span>
+
+                </button>
+
+
+                <div
+                    id="loginMessage"
+                    class="login-message"
+                ></div>
+
+
+            </form>
+
+
+            <div class="login-footer">
+
+                <span class="footer-dot"></span>
+
+                MatLib · Student Access
+
+            </div>
+
+
+        </div>
+
+    </section>
+
+
+
+    <!-- =====================================================
+         STUDENT DASHBOARD
+    ====================================================== -->
+
+    <section
+        id="studentDashboard"
+        class="student-dashboard"
+        style="display:none;"
+    >
+
+
+        <!-- HEADER -->
+
+        <header class="student-header">
+
+
+            <!-- BRAND -->
+
+            <a
+                href="index.html"
+                class="student-header-logo"
+            >
+
+                <span class="header-logo-symbol">
+                    √x
+                </span>
+
+                <span class="header-logo-text">
+                    MatLib
+                </span>
+
+            </a>
+
+
+            <!-- USER AREA -->
+
+            <div class="student-header-right">
+
+
+                <div class="student-user-info">
+
+                    <strong
+                        id="headerStudentName"
+                    >
+                        Student
+                    </strong>
+
+                    <span
+                        id="headerStudentEmail"
+                    >
+                        -
+                    </span>
+
+                </div>
+
+
+                <button
+                    type="button"
+                    class="logout-btn"
+                    onclick="studentLogout()"
+                >
+
+                    <span>
+                        ↪
+                    </span>
+
+                    Logout
+
+                </button>
+
+
+            </div>
+
+
+        </header>
+
+
+
+        <!-- MAIN CONTENT -->
+
+        <main class="student-main">
+
+
+            <!-- WELCOME -->
+
+            <section
+                class="student-welcome"
+            >
+
+                <div class="welcome-label">
+                    STUDENT PORTAL
+                </div>
+
+
+                <h1>
+
+                    Welcome,
+
+                    <span
+                        id="dashboardStudentName"
+                    >
+                        Student
+                    </span>
+
+                </h1>
+
+
+                <p class="student-roll-line">
+
+                    Roll Number:
+
+                    <strong
+                        id="dashboardRollNo"
+                    >
+                        -
+                    </strong>
+
+                </p>
+
+
+                <div class="welcome-status">
+
+                    <span class="status-dot"></span>
+
+                    Student session active
+
+                </div>
+
+            </section>
+
+
+
+            <!-- STUDENT OPTION -->
+
+            <section
+                class="student-options"
+            >
+
+
+                <button
+                    type="button"
+                    class="student-option-card documents-card"
+                    onclick="openDocuments()"
+                >
+
+
+                    <div class="option-icon">
+
+                        <span class="book-icon book-one"></span>
+
+                        <span class="book-icon book-two"></span>
+
+                        <span class="book-icon book-three"></span>
+
+                    </div>
+
+
+                    <div class="option-content">
+
+
+                        <div class="option-small-title">
+                            MATLIB LIBRARY
+                        </div>
+
+
+                        <h2>
+                            Documents
+                        </h2>
+
+
+                        <p>
+                            Browse question papers,
+                            thesis files and study
+                            materials.
+                        </p>
+
+
+                        <span class="option-action">
+                            Open Documents
+                            <span>
+                                →
+                            </span>
+                        </span>
+
+
+                    </div>
+
+
+                    <div class="option-arrow">
+                        ↗
+                    </div>
+
+
+                </button>
+
+
+            </section>
+
+
+
+            <!-- SMALL INFORMATION CARD -->
+
+            <section
+                class="student-info-strip"
+            >
+
+                <div class="info-strip-icon">
+                    ✦
+                </div>
+
+
+                <div>
+
+                    <strong>
+                        Your academic library
+                    </strong>
+
+                    <p>
+                        Access your study materials
+                        and documents through MatLib.
+                    </p>
+
+                </div>
+
+            </section>
+
+
+        </main>
+
+
+
+        <!-- FOOTER -->
+
+        <footer class="student-footer">
+
+            MatLib · Mathematics Library Management System
+
+        </footer>
+
+
+    </section>
+
+
+
+    <!-- SCRIPTS -->
+
+    <script
+        src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+    ></script>
+
+    <script
+        src="assets/config.js"
+    ></script>
+
+    <script
+        src="assets/student.js"
+    ></script>
+
+
+</body>
+
+</html>

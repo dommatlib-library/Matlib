@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>MatLib - Documents</title>
+
+    <link
+        rel="stylesheet"
+        href="assets/documents.css"
+    >
+</head>
+
+<body>
+
+    <!-- =====================================================
+         HEADER
+    ====================================================== -->
+
+    <header class="top-header">
+
+        <div class="header-left">
+
+            <button
+                type="button"
+                class="header-back-button"
+                id="backButton"
+                title="Go back"
+            >
+                ←
+            </button>
+
+            <div class="matlib-logo">
+                <span class="logo-symbol">√x</span>
+                <span class="logo-text">MatLib</span>
+            </div>
+
+            <div class="header-divider"></div>
+
+            <div class="header-page-title">
+                Documents
+            </div>
+
+        </div>
+
+
+        <div class="header-right">
+
+            <button
+                type="button"
+                class="refresh-button"
+                id="refreshButton"
+                title="Refresh"
+            >
+                ↻
+            </button>
+
+
+            <!-- PROFILE AREA -->
+
+            <div
+                class="profile-area"
+                id="profileArea"
+            >
+
+                <button
+                    type="button"
+                    class="profile-button"
+                    id="profileButton"
+                    aria-expanded="false"
+                    aria-controls="profileMenu"
+                >
+
+                    <span
+                        class="profile-avatar"
+                        id="studentInitial"
+                    >
+                        B
+                    </span>
+
+                    <span class="profile-details">
+
+                        <strong
+                            id="headerStudentName"
+                        >
+                            Barath K
+                        </strong>
+
+                        <small
+                            id="headerStudentEmail"
+                        >
+                            baratheyy@gmail.com
+                        </small>
+
+                    </span>
+
+                    <span class="profile-chevron">
+                        ▾
+                    </span>
+
+                </button>
+
+
+                <!-- PROFILE DROPDOWN -->
+
+                <div
+                    class="profile-menu"
+                    id="profileMenu"
+                    hidden
+                >
+
+                    <div class="profile-menu-user">
+
+                        <span
+                            class="profile-menu-avatar"
+                            id="menuStudentInitial"
+                        >
+                            B
+                        </span>
+
+                        <div class="profile-menu-user-details">
+
+                            <strong
+                                id="menuStudentName"
+                            >
+                                Barath K
+                            </strong>
+
+                            <small
+                                id="menuStudentEmail"
+                            >
+                                baratheyy@gmail.com
+                            </small>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="profile-menu-divider"></div>
+
+
+                    <button
+                        type="button"
+                        class="logout-button"
+                        id="logoutButton"
+                    >
+
+                        <span class="logout-icon">
+                            ↪
+                        </span>
+
+                        <span>
+                            Logout
+                        </span>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- =====================================================
+         MAIN CONTENT
+    ====================================================== -->
+
+    <main class="page-content">
+
+
+        <!-- PAGE INTRO -->
+
+        <section class="page-intro">
+
+            <div class="intro-left">
+
+                <div class="eyebrow">
+                    MATLIB LIBRARY
+                </div>
+
+                <h1>
+                    Question Papers
+                </h1>
+
+                <p>
+                    Access your academic question papers and study materials.
+                </p>
+
+            </div>
+
+
+            <div class="student-card">
+
+                <div
+                    class="student-card-avatar"
+                    id="introStudentInitial"
+                >
+                    B
+                </div>
+
+                <div class="student-card-details">
+
+                    <strong
+                        id="introStudentName"
+                    >
+                        Barath K
+                    </strong>
+
+                    <span>
+                        Roll No.
+                        <span id="introStudentRoll">
+                            2022239025
+                        </span>
+                    </span>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- DOCUMENTS PANEL -->
+
+        <section class="documents-panel">
+
+
+            <!-- PANEL TOP -->
+
+            <div class="documents-panel-top">
+
+                <div class="documents-tab">
+
+                    <span class="tab-icon">
+                        ▦
+                    </span>
+
+                    <span>
+                        My Documents
+                    </span>
+
+                </div>
+
+
+                <div
+                    class="document-count"
+                    id="documentCount"
+                >
+                    0 items
+                </div>
+
+            </div>
+
+
+
+            <!-- BREADCRUMB -->
+
+            <div
+                class="breadcrumb"
+                id="breadcrumb"
+            >
+
+                <button
+                    type="button"
+                    class="breadcrumb-home"
+                    id="homeBreadcrumb"
+                >
+                    🏠
+                </button>
+
+                <span class="breadcrumb-separator">
+                    ›
+                </span>
+
+                <span class="breadcrumb-current">
+                    Question Papers
+                </span>
+
+            </div>
+
+
+
+            <!-- MESSAGE -->
+
+            <div
+                class="documents-message"
+                id="documentsMessage"
+                hidden
+            ></div>
+
+
+
+            <!-- LOADING -->
+
+            <div
+                class="documents-loading"
+                id="documentsLoading"
+            >
+
+                <div class="loading-spinner"></div>
+
+                <span>
+                    Loading documents...
+                </span>
+
+            </div>
+
+
+
+            <!-- DOCUMENT LIST -->
+
+            <div
+                class="documents-container"
+                id="documentsContainer"
+            ></div>
+
+        </section>
+
+    </main>
+
+
+
+    <!-- =====================================================
+         SCRIPTS
+    ====================================================== -->
+
+    <script src="assets/config.js"></script>
+
+    <script src="assets/student-documents.js"></script>
+
+</body>
+</html>

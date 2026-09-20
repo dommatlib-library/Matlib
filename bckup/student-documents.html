@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>MatLib - Documents</title>
+
+    <link rel="stylesheet" href="assets/student-documents.css">
+</head>
+
+<body>
+
+    <header class="top-header">
+
+        <div class="header-left">
+
+            <button
+                id="backButton"
+                class="back-button"
+                type="button"
+                title="Back"
+            >
+                ←
+            </button>
+
+            <div class="brand">
+                <span class="brand-symbol">√x</span>
+                <span class="brand-name">MatLib</span>
+            </div>
+
+            <div class="header-divider"></div>
+
+            <span class="page-title">Documents</span>
+
+        </div>
+
+        <div class="header-right">
+
+            <button
+                id="refreshButton"
+                class="refresh-button"
+                type="button"
+                title="Refresh"
+            >
+                ↻
+            </button>
+
+            <div class="student-info">
+
+                <strong id="headerStudentName">
+                    Student
+                </strong>
+
+                <span id="headerStudentEmail">
+                    -
+                </span>
+
+            </div>
+
+            <button
+                id="logoutButton"
+                class="logout-button"
+                type="button"
+            >
+                Logout
+            </button>
+
+        </div>
+
+    </header>
+
+
+    <main class="main-content">
+
+        <section class="page-intro">
+
+            <div>
+                <div class="eyebrow">
+                    MATLIB LIBRARY
+                </div>
+
+                <h1>Question Papers</h1>
+
+                <p>
+                    Access your academic question papers and study materials.
+                </p>
+            </div>
+
+            <div class="profile-card">
+
+                <div id="studentInitial" class="profile-avatar">
+                    S
+                </div>
+
+                <div>
+                    <strong id="introStudentName">
+                        Student
+                    </strong>
+
+                    <span>
+                        Roll No.
+                        <b id="introStudentRoll">-</b>
+                    </span>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <section class="documents-toolbar">
+
+            <button class="my-documents-button" type="button">
+                ▦
+                <span>My Documents</span>
+            </button>
+
+            <span id="documentCount" class="document-count">
+                Loading...
+            </span>
+
+        </section>
+
+
+        <div class="breadcrumb">
+
+            <button
+                id="breadcrumbHome"
+                class="breadcrumb-button"
+                type="button"
+            >
+                🏠
+            </button>
+
+            <span>›</span>
+
+            <button
+                id="breadcrumbCurrent"
+                class="breadcrumb-current"
+                type="button"
+            >
+                Question Papers
+            </button>
+
+        </div>
+
+
+        <section
+            id="documentsLoading"
+            class="loading-state"
+        >
+            <div class="spinner"></div>
+            <span>Loading documents...</span>
+        </section>
+
+
+        <section
+            id="documentsMessage"
+            class="message"
+            style="display: none;"
+        ></section>
+
+
+        <section
+            id="documentsContainer"
+            class="documents-container"
+        ></section>
+
+    </main>
+
+
+    <script src="assets/config.js"></script>
+    <script src="assets/student-documents.js"></script>
+
+</body>
+
+</html>

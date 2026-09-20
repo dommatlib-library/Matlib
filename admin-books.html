@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MatLib — Book Catalogue</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/admin-dashboard.css"><link rel="stylesheet" href="assets/admin-books.css">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="assets/config.js"></script>
+</head>
+<body class="admin-books-page">
+<header class="admin-books-header"><div class="admin-books-brand"><a class="brand-link" href="admin-dashboard.html"><span class="brand-mark">√x</span><span>MatLib</span></a><span class="admin-label">ADMIN</span></div><div class="admin-header-right"><span class="system-status"><span class="status-dot"></span>System Online</span><button class="back-btn" type="button" onclick="window.location.href='admin-dashboard.html'">← Dashboard</button></div></header>
+<main class="admin-books-main">
+<section class="catalog-hero"><div><span class="eyebrow">MATLIB ADMINISTRATION</span><h1>Book Catalogue</h1><p>Browse all library books in a faculty-style catalogue with pagination.</p></div><div class="catalog-count"><strong id="totalBooks">0</strong><span>BOOKS</span></div></section>
+<section class="catalog-stats"><div><span>▥</span><strong id="availableBooks">0</strong><small>Available</small></div><div><span>↗</span><strong id="issuedBooks">0</strong><small>Issued</small></div><div><span>◈</span><strong id="categoryCount">0</strong><small>Categories</small></div></section>
+<section class="catalog-panel"><div class="catalog-toolbar-main"><input id="catalogSearch" placeholder="Search book, author, access number…"><select id="catalogCategory"><option value="">All categories</option></select><select id="catalogStatus"><option value="">All status</option><option value="available">Available</option><option value="issued">Issued</option><option value="inactive">Inactive</option></select><button id="catalogRefresh" class="btn secondary">↻ Refresh</button></div><div id="catalogGrid" class="admin-catalog-grid"></div><div id="catalogPager" class="catalog-pager"></div></section>
+</main>
+<script src="assets/admin-books.js"></script>
+</body>
+</html>

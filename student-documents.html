@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>MatLib - Documents</title>
+
+    <link
+        rel="stylesheet"
+        href="assets/student-documents.css"
+    >
+
+</head>
+
+
+<body>
+
+    <!-- =====================================================
+         BACKGROUND
+    ====================================================== -->
+
+    <div class="page-background"></div>
+
+
+    <!-- =====================================================
+         HEADER
+    ====================================================== -->
+
+    <header class="drive-header">
+
+        <div class="drive-header-left">
+
+            <button
+                class="icon-button back-button"
+                onclick="goBackToStudentDashboard()"
+                title="Back"
+            >
+                ←
+            </button>
+
+
+            <div class="matlib-brand">
+
+                <span class="brand-symbol">
+                    √x
+                </span>
+
+                <span class="brand-name">
+                    MatLib
+                </span>
+
+            </div>
+
+
+            <div class="header-separator"></div>
+
+
+            <div class="drive-page-name">
+                Documents
+            </div>
+
+        </div>
+
+
+        <div class="drive-header-right">
+
+            <button
+                class="header-refresh"
+                onclick="loadQuestionPapers()"
+                title="Refresh"
+            >
+                ↻
+            </button>
+
+
+            <div class="drive-student">
+
+                <div
+                    id="headerStudentName"
+                    class="drive-student-name"
+                >
+                    Student
+                </div>
+
+                <div
+                    id="headerStudentEmail"
+                    class="drive-student-email"
+                >
+                    -
+                </div>
+
+            </div>
+
+
+            <button
+                class="drive-logout"
+                onclick="studentLogoutFromDocuments()"
+            >
+                Logout
+            </button>
+
+        </div>
+
+    </header>
+
+
+    <!-- =====================================================
+         MAIN DRIVE AREA
+    ====================================================== -->
+
+    <main class="drive-main">
+
+
+        <!-- =================================================
+             TOP BAR
+        ================================================== -->
+
+        <section class="drive-top">
+
+            <div class="drive-heading">
+
+                <h1>
+                    Question Papers
+                </h1>
+
+                <p>
+                    MatLib Library Documents
+                </p>
+
+            </div>
+
+
+            <div class="student-mini-profile">
+
+                <div class="mini-avatar">
+                    <span id="studentInitial">
+                        S
+                    </span>
+                </div>
+
+                <div>
+
+                    <strong id="introStudentName">
+                        Student
+                    </strong>
+
+                    <small>
+                        Roll No.
+                        <span id="introStudentRoll">
+                            -
+                        </span>
+                    </small>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             DRIVE TOOLBAR
+        ================================================== -->
+
+        <section class="drive-toolbar">
+
+            <div class="toolbar-left">
+
+                <button
+                    class="toolbar-button active"
+                    type="button"
+                >
+                    <span>▦</span>
+                    My Documents
+                </button>
+
+            </div>
+
+
+            <div class="toolbar-right">
+
+                <span
+                    id="documentCount"
+                    class="document-count"
+                >
+                    Loading...
+                </span>
+
+            </div>
+
+        </section>
+
+
+        <!-- =================================================
+             BREADCRUMB
+        ================================================== -->
+
+        <div class="drive-breadcrumb">
+
+            <span class="breadcrumb-home">
+                🏠
+            </span>
+
+            <span class="breadcrumb-arrow">
+                ›
+            </span>
+
+            <span>
+                Question Papers
+            </span>
+
+        </div>
+
+
+        <!-- =================================================
+             LOADING
+        ================================================== -->
+
+        <section
+            id="documentsLoading"
+            class="documents-loading"
+        >
+
+            <div class="drive-loader"></div>
+
+            <span>
+                Loading documents...
+            </span>
+
+        </section>
+
+
+        <!-- =================================================
+             MESSAGE
+        ================================================== -->
+
+        <section
+            id="documentsMessage"
+            class="documents-message"
+            style="display:none;"
+        ></section>
+
+
+        <!-- =================================================
+             DOCUMENT AREA
+        ================================================== -->
+
+        <section
+            id="documentsContainer"
+            class="documents-container"
+        ></section>
+
+
+    </main>
+
+
+    <!-- =====================================================
+         SHARE MODAL
+    ====================================================== -->
+
+    <div
+        id="shareModal"
+        class="modal-overlay"
+        style="display:none;"
+    >
+
+        <div class="share-modal">
+
+            <button
+                class="modal-close"
+                onclick="closeShareModal()"
+                title="Close"
+            >
+                ×
+            </button>
+
+
+            <div class="share-modal-icon">
+                ✉
+            </div>
+
+
+            <h2>
+                Send Question Paper
+            </h2>
+
+
+            <p
+                id="shareFileName"
+                class="share-file-name"
+            >
+                Question Paper
+            </p>
+
+
+            <div class="recipient-label">
+                To
+            </div>
+
+
+            <div
+                id="recipientList"
+                class="recipient-list"
+            ></div>
+
+
+            <button
+                class="add-recipient-btn"
+                onclick="addRecipientInput()"
+            >
+                + Add recipient
+            </button>
+
+
+            <div class="share-note">
+
+                <span>ⓘ</span>
+
+                The Question Paper link will be
+                included in the email.
+
+            </div>
+
+
+            <div class="share-modal-actions">
+
+                <button
+                    class="cancel-share-btn"
+                    onclick="closeShareModal()"
+                >
+                    Cancel
+                </button>
+
+
+                <button
+                    class="send-share-btn"
+                    onclick="sendQuestionPaper()"
+                >
+                    Send
+                </button>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         SCRIPTS
+    ====================================================== -->
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script src="assets/config.js"></script>
+
+    <script src="assets/student.js"></script>
+
+    <script src="assets/student-documents.js"></script>
+
+</body>
+
+</html>
