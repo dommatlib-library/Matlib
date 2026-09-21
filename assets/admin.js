@@ -587,6 +587,56 @@
                     data.user.id
                 );
 
+            /* ---------------------------------------------
+               SINGLE-DEVICE SESSION
+               If another administrator session is active,
+               ask whether to invalidate all other devices.
+            --------------------------------------------- */
+            const applicationSessionId =
+                (window.crypto && typeof window.crypto.randomUUID === "function")
+                    ? window.crypto.randomUUID()
+                    : `admin-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+            const { data: claimResult, error: claimError } =
+                await sb.rpc("admin_claim_session", {
+                    p_session_id: applicationSessionId
+                });
+
+            if (claimError) {
+                console.error("MatLib admin session claim:", claimError);
+                throw new Error("Unable to verify the administrator session. Please run the latest admin session SQL in Supabase.");
+            }
+
+            if (claimResult?.success === false && claimResult?.reason === "active_session") {
+                const logoutOtherDevices = window.confirm(
+                    "This administrator account is already logged in on another browser/device.\n\n" +
+                    "Logout from all other devices and continue here?\n\n" +
+                    "OK = Logout from all other devices and continue\n" +
+                    "Cancel = Stop login"
+                );
+
+                if (!logoutOtherDevices) {
+                    try { await sb.auth.signOut(); } catch (e) { console.warn(e); }
+                    clearMessage();
+                    showMessage("Login cancelled. The existing device remains logged in.");
+                    generateCaptcha();
+                    return;
+                }
+
+                const { data: forceResult, error: forceError } =
+                    await sb.rpc("admin_force_claim_session", {
+                        p_session_id: applicationSessionId
+                    });
+
+                if (forceError || !forceResult?.success) {
+                    console.error("MatLib force session claim:", forceError || forceResult);
+                    throw new Error("Could not logout the other device. Please try again.");
+                }
+            } else if (claimResult?.success !== true) {
+                throw new Error(claimResult?.message || "Could not create the administrator session.");
+            }
+
+            localStorage.setItem("matlibAdminSessionId", applicationSessionId);
 
             console.log(
                 "MatLib: Administrator verified.",

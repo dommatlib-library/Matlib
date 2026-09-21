@@ -37,14 +37,15 @@
 
         borrowedBooks: [],
 
-        borrowedReturnRequestIds: new Set(),
-
-        borrowedBookView: "active",
-
         bookRequests: [],
 
         returnRequests: [],
 
+        table: {
+            pageSize: 10, borrowedPage: 1, borrowedSearch: "",
+            historyRows: [], historyPage: 1, historySearch: "",
+            rejectionRows: [], rejectionPage: 1, rejectionSearch: ""
+        },
 
         /* Drive */
 
@@ -53,6 +54,7 @@
         driveFolders: [],
 
         driveFiles: [],
+        driveOwners: {},
 
         selectedRootId: null,
 
@@ -68,7 +70,13 @@
 
         selectedUploadFile: null,
 
-        driveLoading: false
+        driveLoading: false,
+
+        calendar: {
+            month: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+            selectedDate: null,
+            events: []
+        }
 
     };
 
@@ -606,18 +614,26 @@ return profile;
             borrowPanel:
                 "My Books",
 
-            historyPanel:
-                "History",
-
             requestPanel:
                 "Book Requests",
 
+            returnPanel:
+                "Return Requests",
+
+            historyPanel:
+                "Book History",
+
+            rejectionPanel:
+                "Rejected Requests",
 
             documentsSection:
                 "Documents",
 
             catalogueSection:
-                "Library Catalogue"
+                "Library Catalogue",
+
+            calendarSection:
+                "Library Calendar"
 
         };
 
@@ -651,10 +667,37 @@ return profile;
 
         if (
             sectionId ===
+            "returnPanel"
+        ) {
+
+            loadFacultyReturns();
+
+        }
+
+        if (
+            sectionId ===
             "historyPanel"
         ) {
 
             loadFacultyHistory();
+
+        }
+
+        if (
+            sectionId ===
+            "rejectionPanel"
+        ) {
+
+            loadFacultyRejections();
+
+        }
+
+        if (
+            sectionId ===
+            "calendarSection"
+        ) {
+
+            loadFacultyCalendar();
 
         }
 
@@ -802,9 +845,14 @@ return profile;
             );
 
 
+            const currentRequests = requests.filter(row => {
+                const status = String(row.status || "").toLowerCase();
+                return ["pending", "approved", "processing"].includes(status);
+            });
+
             setText(
                 "facultyRequests",
-                pending.length
+                currentRequests.length
             );
 
 
@@ -841,307 +889,31 @@ return profile;
        BORROWED BOOKS
     ======================================================== */
 
-    async function loadFacultyBorrowed() {
-
-        if (!state.profile) {
-            return;
-        }
-
-
-        const tbody =
-            $("facultyBorrowedBody");
-
-
-        if (!tbody) {
-            return;
-        }
-
-
-        tbody.innerHTML = `
-            <tr>
-                <td
-                    colspan="8"
-                    class="table-loading"
-                >
-                    Loading borrowed books...
-                </td>
-            </tr>
-        `;
-
-
-        try {
-
-            const {
-                data,
-                error
-            } =
-                await sb
-                    .from(
-                        "borrow_records"
-                    )
-                    .select(
-                        `
-                        id,
-                        book_id,
-                        issued_at,
-                        due_date,
-                        returned_at,
-                        status,
-                        books (
-                            id,
-                            book_name,
-                            author_name,
-                            access_no,
-                            cupboard_no
-                        )
-                        `
-                    )
-                    .eq(
-                        "faculty_id",
-                        state.profile.id
-                    )
-                    .order(
-                        "issued_at",
-                        {
-                            ascending:
-                                false
-                        }
-                    );
-
-
-            if (error) {
-                throw error;
-            }
-
-
-            state.borrowedBooks =
-                data || [];
-
-
-            /*
-             * A book is current while it is still issued.
-             * A pending/processing return request keeps it in Current Books
-             * with a disabled "Requested" action.
-             * Once Admin approves the return, move that book to History even
-             * if returned_at is written a moment later by the admin workflow.
-             */
-            const pendingReturnIds = new Set();
-            const approvedReturnIds = new Set();
-
-            const allBorrowIds = state.borrowedBooks.map(row => row.id);
-
-            if (allBorrowIds.length) {
-                const { data: returnRequests, error: returnRequestError } =
-                    await sb
-                        .from("return_requests")
-                        .select("borrow_id, status")
-                        .eq("faculty_id", state.profile.id)
-                        .in("borrow_id", allBorrowIds);
-
-                if (returnRequestError) {
-                    throw returnRequestError;
-                }
-
-                (returnRequests || []).forEach(request => {
-                    const status = String(request.status || "").toLowerCase();
-                    const borrowId = Number(request.borrow_id);
-
-                    if (["pending", "processing"].includes(status)) {
-                        pendingReturnIds.add(borrowId);
-                    } else if (status === "approved") {
-                        approvedReturnIds.add(borrowId);
-                    }
-                });
-            }
-
-            state.borrowedReturnRequestIds = pendingReturnIds;
-
-            const currentBooks = state.borrowedBooks.filter(row =>
-                !row.returned_at && !approvedReturnIds.has(Number(row.id))
-            );
-
-            const active = currentBooks.filter(row => {
-                const requested = pendingReturnIds.has(Number(row.id));
-                return state.borrowedBookView === "requested" ? requested : !requested;
-            });
-
-
-            if (!active.length) {
-
-                tbody.innerHTML = `
-                    <tr>
-                        <td
-                            colspan="8"
-                            class="empty-table"
-                        >
-                            ${state.borrowedBookView === "requested" ? "No books have a pending return request." : "No active books are currently issued."}
-                        </td>
-                    </tr>
-                `;
-
-                return;
-
-            }
-
-
-            tbody.innerHTML =
-                active.map(
-                    row => {
-
-                        const book =
-                            Array.isArray(
-                                row.books
-                            )
-                                ? row.books[0]
-                                : row.books;
-
-
-                        const overdue =
-                            row.due_date &&
-                            new Date(
-                                row.due_date
-                            ) <
-                                new Date();
-
-
-                        return `
-
-                            <tr>
-
-                                <td>
-
-                                    <strong>
-                                        ${escapeHTML(
-                                            book?.book_name ||
-                                            "Unknown Book"
-                                        )}
-                                    </strong>
-
-
-                                </td>
-
-
-                                <td>
-                                    ${escapeHTML(
-                                        book?.author_name ||
-                                        "-"
-                                    )}
-                                </td>
-
-
-                                <td>
-                                    ${escapeHTML(
-                                        book?.access_no ||
-                                        "-"
-                                    )}
-                                </td>
-
-
-                                <td>
-                                    ${escapeHTML(
-                                        book?.cupboard_no ||
-                                        "-"
-                                    )}
-                                </td>
-
-
-                                <td>
-                                    ${formatDate(
-                                        row.issued_at
-                                    )}
-                                </td>
-
-
-                                <td class="${
-                                    overdue
-                                        ? "overdue"
-                                        : ""
-                                }">
-
-                                    ${formatDate(
-                                        row.due_date
-                                    )}
-
-                                </td>
-
-
-                                <td>
-
-                                    <span
-                                        class="status-pill ${
-                                            pendingReturnIds.has(Number(row.id))
-                                                ? "status-requested"
-                                                : (overdue ? "danger" : "success")
-                                        }"
-                                    >
-
-                                        ${
-                                            pendingReturnIds.has(Number(row.id))
-                                                ? "Requested"
-                                                : (overdue ? "Overdue" : "Issued")
-                                        }
-
-                                    </span>
-
-                                </td>
-
-
-                                <td>
-
-                                    ${
-                                        pendingReturnIds.has(Number(row.id))
-                                            ? `
-                                                <button
-                                                    type="button"
-                                                    class="faculty-table-btn return-requested-btn"
-                                                    disabled
-                                                    aria-disabled="true"
-                                                    title="Return request is waiting for Admin approval"
-                                                >
-                                                    Requested
-                                                </button>
-                                            `
-                                            : `
-                                                <button
-                                                    type="button"
-                                                    class="faculty-table-btn"
-                                                    data-request-return="${row.id}"
-                                                >
-                                                    ↩ Return
-                                                </button>
-                                            `
-                                    }
-
-                                </td>
-
-                            </tr>
-
-                        `;
-
-                    }
-                ).join("");
-
-        } catch (error) {
-
-            console.error(
-                "Borrowed books error:",
-                error
-            );
-
-
-            tbody.innerHTML = `
-                <tr>
-                    <td
-                        colspan="8"
-                        class="empty-table"
-                    >
-                        Unable to load borrowed books.
-                    </td>
-                </tr>
-            `;
-
-        }
-
+    function renderFacultyTablePagination(containerId, page, totalRows, key) {
+        const container = $(containerId); if (!container) return;
+        const pageSize = state.table.pageSize; const totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+        const current = Math.min(Math.max(1, page), totalPages); if (totalRows <= pageSize) { container.innerHTML = ""; return; }
+        const buttons=[]; const start=Math.max(1,current-2), end=Math.min(totalPages,current+2);
+        buttons.push(`<button type="button" class="faculty-pagination-btn" data-faculty-page="${key}:1" ${current===1?"disabled":""}>«</button>`);
+        buttons.push(`<button type="button" class="faculty-pagination-btn" data-faculty-page="${key}:${current-1}" ${current===1?"disabled":""}>‹</button>`);
+        for(let i=start;i<=end;i++)buttons.push(`<button type="button" class="faculty-pagination-btn ${i===current?"active":""}" data-faculty-page="${key}:${i}">${i}</button>`);
+        buttons.push(`<button type="button" class="faculty-pagination-btn" data-faculty-page="${key}:${current+1}" ${current===totalPages?"disabled":""}>›</button>`);
+        buttons.push(`<button type="button" class="faculty-pagination-btn" data-faculty-page="${key}:${totalPages}" ${current===totalPages?"disabled":""}>»</button>`); container.innerHTML=buttons.join("");
+    }
+    function filterFacultyRows(rows, search, fields) { const q=String(search||"").trim().toLowerCase(); return q?rows.filter(row=>fields(row).toLowerCase().includes(q)):rows; }
+    function renderFacultyBorrowed() {
+        const tbody=$("facultyBorrowedBody"); if(!tbody)return;
+        const active=(state.borrowedBooks||[]).filter(row=>!row.returned_at);
+        const filtered=filterFacultyRows(active,state.table.borrowedSearch,row=>{const book=Array.isArray(row.books)?row.books[0]:row.books;return `${book?.book_name||""} ${book?.author_name||""} ${book?.access_no||""} ${book?.cupboard_no||""}`;});
+        const totalPages=Math.max(1,Math.ceil(filtered.length/state.table.pageSize)); state.table.borrowedPage=Math.min(state.table.borrowedPage,totalPages);
+        const pageRows=filtered.slice((state.table.borrowedPage-1)*state.table.pageSize,state.table.borrowedPage*state.table.pageSize);
+        if(!pageRows.length){tbody.innerHTML=`<tr><td colspan="8" class="empty-table">${active.length?"No borrowed books match your search.":"No books are currently borrowed."}</td></tr>`;renderFacultyTablePagination("facultyBorrowedPagination",1,0,"borrowed");return;}
+        tbody.innerHTML=pageRows.map(row=>{const book=Array.isArray(row.books)?row.books[0]:row.books;const overdue=row.due_date&&new Date(row.due_date)<new Date();return `<tr><td><strong>${escapeHTML(book?.book_name||"Unknown Book")}</strong><small>Access No: ${escapeHTML(book?.access_no||"-")}</small></td><td>${escapeHTML(book?.author_name||"-")}</td><td>${escapeHTML(book?.access_no||"-")}</td><td>${escapeHTML(book?.cupboard_no||"-")}</td><td>${formatDate(row.issued_at)}</td><td class="${overdue?"overdue":""}">${formatDate(row.due_date)}</td><td><span class="status-pill ${overdue?"danger":"success"}">${overdue?"Overdue":"Issued"}</span></td><td><button type="button" class="faculty-table-btn" data-request-return="${row.id}">↩ Return</button></td></tr>`;}).join("");
+        renderFacultyTablePagination("facultyBorrowedPagination",state.table.borrowedPage,filtered.length,"borrowed");
+    }
+    async function loadFacultyBorrowed(){
+        if(!state.profile)return; const tbody=$("facultyBorrowedBody"); if(!tbody)return; tbody.innerHTML=`<tr><td colspan="8" class="table-loading">Loading borrowed books...</td></tr>`;
+        try{const {data,error}=await sb.from("borrow_records").select(`id, book_id, issued_at, due_date, returned_at, status, books (id, book_name, author_name, access_no, cupboard_no)`).eq("faculty_id",state.profile.id).order("issued_at",{ascending:false});if(error)throw error;state.borrowedBooks=data||[];renderFacultyBorrowed();}catch(error){console.error("Borrowed books error:",error);tbody.innerHTML=`<tr><td colspan="8" class="empty-table">Unable to load borrowed books.</td></tr>`;}
     }
 
 
@@ -1155,112 +927,246 @@ return profile;
             return;
         }
 
-        const tbody = $("facultyRequestsBody");
+
+        const tbody =
+            $("facultyRequestsBody");
+
 
         if (!tbody) {
             return;
         }
 
+
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="table-loading">
-                    Loading pending requests...
+                <td
+                    colspan="7"
+                    class="table-loading"
+                >
+                    Loading requests...
                 </td>
             </tr>
         `;
 
+
         try {
-            const { data, error } = await sb
-                .from("book_requests")
-                .select(`
-                    id,
-                    book_id,
-                    faculty_id,
-                    status,
-                    requested_at,
-                    books (
-                        id,
-                        book_name,
-                        author_name,
-                        access_no
+
+            const {
+                data,
+                error
+            } =
+                await sb
+                    .from(
+                        "book_requests"
                     )
-                `)
-                .eq("faculty_id", state.profile.id)
-                .eq("status", "pending")
-                .order("requested_at", { ascending: false });
+                    .select(
+                        `
+                        id,
+                        book_id,
+                        faculty_id,
+                        status,
+                        requested_at,
+                        processed_at,
+                        due_date,
+                        rejection_reason,
+                        books (
+                            id,
+                            book_name,
+                            author_name,
+                            access_no
+                        )
+                        `
+                    )
+                    .eq(
+                        "faculty_id",
+                        state.profile.id
+                    )
+                    .eq(
+                        "status",
+                        "pending"
+                    )
+                    .order(
+                        "requested_at",
+                        {
+                            ascending:
+                                false
+                        }
+                    );
+
 
             if (error) {
                 throw error;
             }
 
-            // Only pending requests are considered current/active here.
-            state.bookRequests = data || [];
 
-            if (!state.bookRequests.length) {
+            state.bookRequests =
+                data || [];
+
+
+            if (
+                !state.bookRequests.length
+            ) {
+
                 tbody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="empty-table">
-                            No active book requests.
+                        <td
+                            colspan="7"
+                            class="empty-table"
+                        >
+                            No book requests found.
                         </td>
                     </tr>
                 `;
+
                 return;
+
             }
 
-            tbody.innerHTML = state.bookRequests.map(request => {
-                const book = Array.isArray(request.books)
-                    ? request.books[0]
-                    : request.books;
 
-                return `
-                    <tr>
-                        <td>
-                            <strong>
-                                ${escapeHTML(book?.book_name || "Unknown Book")}
-                            </strong>
-                            <small>
-                                ${escapeHTML(book?.author_name || "-")}
-                            </small>
-                        </td>
+            tbody.innerHTML =
+                state.bookRequests
+                    .map(
+                        request => {
 
-                        <td>
-                            ${escapeHTML(book?.access_no || "-")}
-                        </td>
+                            const book =
+                                Array.isArray(
+                                    request.books
+                                )
+                                    ? request.books[0]
+                                    : request.books;
 
-                        <td>
-                            ${formatDateTime(request.requested_at)}
-                        </td>
 
-                        <td>
-                            <span class="status-pill status-pending">
-                                Pending
-                            </span>
-                        </td>
+                            const status =
+                                String(
+                                    request.status ||
+                                    ""
+                                ).toLowerCase();
 
-                        <td>
-                            <button
-                                type="button"
-                                class="faculty-table-btn danger-btn"
-                                data-cancel-request="${request.id}"
-                            >
-                                Cancel
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join("");
+
+                            return `
+
+                                <tr>
+
+                                    <td>
+
+                                        <strong>
+                                            ${escapeHTML(
+                                                book?.book_name ||
+                                                "Unknown Book"
+                                            )}
+                                        </strong>
+
+                                        <small>
+                                            ${escapeHTML(
+                                                book?.author_name ||
+                                                "-"
+                                            )}
+                                        </small>
+
+                                    </td>
+
+
+                                    <td>
+                                        ${escapeHTML(
+                                            book?.access_no ||
+                                            "-"
+                                        )}
+                                    </td>
+
+
+                                    <td>
+                                        ${formatDateTime(
+                                            request.requested_at
+                                        )}
+                                    </td>
+
+
+                                    <td>
+
+                                        <span
+                                            class="status-pill status-${status}"
+                                        >
+                                            ${escapeHTML(
+                                                request.status ||
+                                                "-"
+                                            )}
+                                        </span>
+
+                                    </td>
+
+
+                                    <td>
+                                        ${
+                                            request.due_date
+                                                ? formatDate(
+                                                    request.due_date
+                                                )
+                                                : "-"
+                                        }
+                                    </td>
+
+
+                                    <td>
+                                        ${
+                                            request.rejection_reason
+                                                ? escapeHTML(
+                                                    request.rejection_reason
+                                                )
+                                                : "-"
+                                        }
+                                    </td>
+
+
+                                    <td>
+
+                                        ${
+                                            status ===
+                                            "pending"
+                                                ? `
+                                                    <button
+                                                        type="button"
+                                                        class="faculty-table-btn danger-btn"
+                                                        data-cancel-request="${
+                                                            request.id
+                                                        }"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                `
+                                                : "-"
+                                        }
+
+                                    </td>
+
+                                </tr>
+
+                            `;
+
+                        }
+                    )
+                    .join("");
 
         } catch (error) {
-            console.error("Request loading error:", error);
+
+            console.error(
+                "Request loading error:",
+                error
+            );
+
 
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="empty-table">
-                        Unable to load active requests.
+                    <td
+                        colspan="7"
+                        class="empty-table"
+                    >
+                        Unable to load requests.
                     </td>
                 </tr>
             `;
+
         }
+
     }
 
 
@@ -1402,6 +1308,10 @@ return profile;
                         "faculty_id",
                         state.profile.id
                     )
+                    .eq(
+                        "status",
+                        "pending"
+                    )
                     .order(
                         "requested_at",
                         {
@@ -1417,11 +1327,7 @@ return profile;
 
 
             state.returnRequests =
-                (data || []).filter(request =>
-                    ["pending", "approved", "processing"].includes(
-                        String(request.status || "").toLowerCase()
-                    )
-                );
+                data || [];
 
 
             if (
@@ -1516,9 +1422,8 @@ return profile;
                                             class="status-pill status-${status}"
                                         >
                                             ${escapeHTML(
-                                                String(request.status || "-")
-                                                    .replace(/_/g, " ")
-                                                    .replace(/\b\w/g, c => c.toUpperCase())
+                                                request.status ||
+                                                "-"
                                             )}
                                         </span>
 
@@ -1569,6 +1474,33 @@ return profile;
     }
 
 
+
+    /* ========================================================
+       BOOK HISTORY
+       Successful completed borrow/return records only.
+    ======================================================== */
+
+    function renderFacultyHistory(){
+        const tbody=$("facultyHistoryBody");if(!tbody)return;const rows=filterFacultyRows(state.table.historyRows||[],state.table.historySearch,row=>`${row.book?.book_name||""} ${row.book?.author_name||""} ${row.book?.access_no||""} ${row.book?.cupboard_no||""}`);const totalPages=Math.max(1,Math.ceil(rows.length/state.table.pageSize));state.table.historyPage=Math.min(state.table.historyPage,totalPages);const pageRows=rows.slice((state.table.historyPage-1)*state.table.pageSize,state.table.historyPage*state.table.pageSize);if(!pageRows.length){tbody.innerHTML=`<tr><td colspan="7" class="empty-table">${state.table.historyRows.length?"No history matches your search.":"No completed book history yet."}</td></tr>`;renderFacultyTablePagination("facultyHistoryPagination",1,0,"history");return;}tbody.innerHTML=pageRows.map(row=>`<tr><td><strong>${escapeHTML(row.book?.book_name||"Unknown Book")}</strong><small>${escapeHTML(row.book?.author_name||"-")}</small></td><td>${escapeHTML(row.book?.access_no||"-")}</td><td>${escapeHTML(row.book?.cupboard_no||"-")}</td><td>${formatDate(row.issued_at)}</td><td>${formatDate(row.due_date)}</td><td>${formatDate(row.returned_at)}</td><td><span class="status-pill success">Returned</span></td></tr>`).join("");renderFacultyTablePagination("facultyHistoryPagination",state.table.historyPage,rows.length,"history");
+    }
+    async function loadFacultyHistory(){
+        const tbody=$("facultyHistoryBody");if(!tbody||!state.profile)return;tbody.innerHTML=`<tr><td colspan="7" class="table-loading">Loading history...</td></tr>`;try{const {data,error}=await sb.from("borrow_records").select(`id, issued_at, due_date, returned_at, status, books (id, book_name, author_name, access_no, cupboard_no)`).eq("faculty_id",state.profile.id).not("returned_at","is",null).order("returned_at",{ascending:false});if(error)throw error;state.table.historyRows=(data||[]).map(row=>({...row,book:Array.isArray(row.books)?row.books[0]:row.books}));state.table.historyPage=1;renderFacultyHistory();}catch(error){console.error("History error:",error);tbody.innerHTML=`<tr><td colspan="7" class="empty-table">Unable to load book history.</td></tr>`;}
+    }
+
+
+    /* ========================================================
+       REJECTED REQUEST HISTORY
+       Includes rejected book requests and rejected return requests.
+    ======================================================== */
+
+    function renderFacultyRejections(){
+        const tbody=$("facultyRejectionBody");if(!tbody)return;const rows=filterFacultyRows(state.table.rejectionRows||[],state.table.rejectionSearch,row=>`${row.type||""} ${row.book?.book_name||""} ${row.book?.author_name||""} ${row.book?.access_no||""} ${row.reason||""}`);const totalPages=Math.max(1,Math.ceil(rows.length/state.table.pageSize));state.table.rejectionPage=Math.min(state.table.rejectionPage,totalPages);const pageRows=rows.slice((state.table.rejectionPage-1)*state.table.pageSize,state.table.rejectionPage*state.table.pageSize);if(!pageRows.length){tbody.innerHTML=`<tr><td colspan="6" class="empty-table">${state.table.rejectionRows.length?"No rejected requests match your search.":"No rejected requests."}</td></tr>`;renderFacultyTablePagination("facultyRejectionPagination",1,0,"rejection");return;}tbody.innerHTML=pageRows.map(row=>`<tr><td><span class="status-pill rejected-type">${escapeHTML(row.type)}</span></td><td><strong>${escapeHTML(row.book?.book_name||"Unknown Book")}</strong><small>${escapeHTML(row.book?.author_name||"-")}</small></td><td>${escapeHTML(row.book?.access_no||"-")}</td><td>${formatDateTime(row.date)}</td><td><span class="status-pill danger">Rejected</span></td><td>${escapeHTML(row.reason||"No reason provided")}</td></tr>`).join("");renderFacultyTablePagination("facultyRejectionPagination",state.table.rejectionPage,rows.length,"rejection");
+    }
+    async function loadFacultyRejections(){
+        const tbody=$("facultyRejectionBody");if(!tbody||!state.profile)return;tbody.innerHTML=`<tr><td colspan="6" class="table-loading">Loading rejected requests...</td></tr>`;try{const [bookResult,returnResult]=await Promise.all([sb.from("book_requests").select(`id, requested_at, rejection_reason, status, books (id, book_name, author_name, access_no)`).eq("faculty_id",state.profile.id).eq("status","rejected").order("requested_at",{ascending:false}),sb.from("return_requests").select(`id, requested_at, rejection_reason, status, borrow_records (id, books (id, book_name, author_name, access_no))`).eq("faculty_id",state.profile.id).eq("status","rejected").order("requested_at",{ascending:false})]);if(bookResult.error)throw bookResult.error;if(returnResult.error)throw returnResult.error;const bookRows=(bookResult.data||[]).map(row=>({type:"Book Request",date:row.requested_at,reason:row.rejection_reason,book:Array.isArray(row.books)?row.books[0]:row.books}));const returnRows=(returnResult.data||[]).map(row=>{const borrow=Array.isArray(row.borrow_records)?row.borrow_records[0]:row.borrow_records;return{type:"Return Request",date:row.requested_at,reason:row.rejection_reason,book:Array.isArray(borrow?.books)?borrow.books[0]:borrow?.books};});state.table.rejectionRows=[...bookRows,...returnRows].sort((a,b)=>new Date(b.date)-new Date(a.date));state.table.rejectionPage=1;renderFacultyRejections();}catch(error){console.error("Rejection history error:",error);tbody.innerHTML=`<tr><td colspan="6" class="empty-table">Unable to load rejected requests.</td></tr>`;}
+    }
+
+
     /* ========================================================
        REQUEST RETURN
     ======================================================== */
@@ -1577,40 +1509,45 @@ return profile;
         borrowId
     ) {
 
-        const id = Number(borrowId);
-
-        if (!id || !state.profile?.id) {
+        if (!borrowId) {
             return;
         }
 
-        if (!confirm("Send this book for return approval?")) {
+
+        if (
+            !confirm(
+                "Send this book for return approval?"
+            )
+        ) {
             return;
         }
+
 
         try {
 
-            /*
-             * Use the SECURITY DEFINER database function.
-             * Do not INSERT directly into return_requests from the browser:
-             * the table is protected by RLS/privileges and faculty_id must
-             * always come from auth.uid() on the database side.
-             */
-            const { data, error } = await sb.rpc(
-                "request_book_return",
-                {
-                    p_borrow_id: id
-                }
-            );
+            const {
+                error
+            } =
+                await sb.rpc(
+                    "request_book_return",
+                    {
+                        p_borrow_id:
+                            Number(
+                                borrowId
+                            )
+                    }
+                );
+
 
             if (error) {
                 throw error;
             }
 
-            if (!data) {
-                throw new Error("The return request was not created.");
-            }
 
-            showToast("Return request sent to Admin.");
+            showToast(
+                "Return request sent to Admin."
+            );
+
 
             await Promise.all([
                 loadFacultyBorrowed(),
@@ -1618,16 +1555,17 @@ return profile;
                 loadDashboardStats()
             ]);
 
+
         } catch (error) {
 
             console.error(
-                "Return request error:",
                 error
             );
 
+
             showToast(
-                error?.message ||
-                "Unable to send return request.",
+                error.message ||
+                "Unable to request return.",
                 "error"
             );
 
@@ -1636,288 +1574,488 @@ return profile;
     }
 
 
+    /* ========================================================
+       FACULTY CALENDAR
+    ======================================================== */
 
-/* ========================================================
-   DRIVE REQUEST
-======================================================== */
+    function calendarDateKey(value) {
 
-async function driveRequest(
-    action,
-    payload = {},
-    file = null
-) {
+        if (!value) return "";
 
-    const session =
-        await getSession();
+        const date = new Date(value);
 
-    if (!session) {
+        if (Number.isNaN(date.getTime())) return "";
 
-        throw new Error(
-            "Your login session expired. Please login again."
-        );
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
     }
 
-    const form =
-        new FormData();
 
-    /*
-     * Action
-     */
+    function calendarDateLabel(key) {
 
-    form.append(
-        "action",
-        String(action)
-    );
+        const parts = String(key || "").split("-").map(Number);
 
-    /*
-     * Normal payload
-     */
+        if (parts.length !== 3 || parts.some(Number.isNaN)) return "Select a date";
 
-    Object.entries(
-        payload || {}
-    ).forEach(
-        ([key, value]) => {
+        const date = new Date(parts[0], parts[1] - 1, parts[2]);
 
-            if (
-                value !== undefined &&
-                value !== null
-            ) {
-
-                form.append(
-                    key,
-                    String(value)
-                );
-
-            }
-
-        }
-    );
-
-    /*
-     * FILE
-     *
-     * Explicitly send the filename as well.
-     */
-
-    if (file) {
-
-        if (!(file instanceof Blob)) {
-
-            throw new Error(
-                "The selected file is invalid."
-            );
-
-        }
-
-        console.log(
-            "MatLib upload:",
-            {
-                name: file.name,
-                size: file.size,
-                type: file.type
-            }
-        );
-
-        form.append(
-            "file",
-            file,
-            file.name || "document"
-        );
+        return date.toLocaleDateString("en-IN", {
+            weekday: "long",
+            day: "2-digit",
+            month: "long",
+            year: "numeric"
+        });
 
     }
 
-    const response =
-        await fetch(
-            `${window.MATLIB_SUPABASE_URL}/functions/v1/drive-manager`,
-            {
-                method: "POST",
 
-                headers: {
+    function addCalendarEvent(list,type,dateValue,description){const key=calendarDateKey(dateValue);if(!key)return;list.push({type,date:key,description:String(description||"Library event")});}
+    async function loadFacultyCalendar(){
+        if(!state.profile)return;const grid=$("facultyCalendarGrid");if(!grid)return;grid.innerHTML=`<div class="calendar-loading">Loading calendar...</div>`;try{const borrowResult=await sb.from("borrow_records").select(`id, issued_at, due_date, returned_at, status, books (book_name, access_no)`).eq("faculty_id",state.profile.id);if(borrowResult.error)throw borrowResult.error;const requestResult=await sb.from("book_requests").select(`id, requested_at, processed_at, due_date, status, books (book_name, access_no)`).eq("faculty_id",state.profile.id);const events=[];(borrowResult.data||[]).forEach(row=>{const book=Array.isArray(row.books)?row.books[0]:row.books;const name=book?.book_name||"Book";addCalendarEvent(events,"issue",row.issued_at,`Book issued: ${name}`);addCalendarEvent(events,"due",row.due_date,`Book due: ${name}`);if(row.returned_at)addCalendarEvent(events,"return",row.returned_at,`Book returned: ${name}`);});if(!requestResult.error){(requestResult.data||[]).forEach(row=>{const book=Array.isArray(row.books)?row.books[0]:row.books;addCalendarEvent(events,"request",row.requested_at,`Book request: ${book?.book_name||"Book"}`);});}else{console.warn("Faculty calendar: request events unavailable:",requestResult.error.message);}state.driveFiles.filter(file=>isCurrentFacultyOwner(file.uploaded_by)).forEach(file=>addCalendarEvent(events,"upload",file.created_at,`Document uploaded: ${file.name||"Document"}`));state.calendar.events=events;if(!state.calendar.selectedDate)state.calendar.selectedDate=calendarDateKey(new Date());renderFacultyCalendar();}catch(error){console.error("Faculty calendar error:",error);grid.innerHTML=`<div class="calendar-empty calendar-error">${escapeHTML(error.message||"Unable to load calendar.")}</div>`;}
+    }
 
-                    "Authorization":
-                        `Bearer ${session.access_token}`,
 
-                    "apikey":
-                        window.MATLIB_SUPABASE_ANON_KEY
+    function renderFacultyCalendar() {
 
-                },
+        const grid = $("facultyCalendarGrid");
+        const monthLabel = $("calendarMonthLabel") || $("facultyCalendarMonth");
 
-                /*
-                 * IMPORTANT:
-                 *
-                 * Do NOT manually set
-                 * Content-Type here.
-                 *
-                 * Browser automatically creates:
-                 *
-                 * multipart/form-data;
-                 * boundary=...
-                 */
+        if (!grid) return;
 
-                body: form
+        const month = state.calendar.month;
+        const year = month.getFullYear();
+        const monthIndex = month.getMonth();
+
+        if (monthLabel) {
+            monthLabel.textContent = month.toLocaleDateString("en-IN", {
+                month: "long",
+                year: "numeric"
+            });
+        }
+
+        const firstDay = new Date(year, monthIndex, 1).getDay();
+        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
+        const previousMonthDays = new Date(year, monthIndex, 0).getDate();
+        const todayKey = calendarDateKey(new Date());
+
+        const eventMap = new Map();
+
+        state.calendar.events.forEach(event => {
+            if (!eventMap.has(event.date)) eventMap.set(event.date, []);
+            eventMap.get(event.date).push(event);
+        });
+
+        let html = "";
+
+        for (let cell = 0; cell < 42; cell++) {
+
+            let dayNumber;
+            let cellYear = year;
+            let cellMonth = monthIndex;
+            let muted = false;
+
+            if (cell < firstDay) {
+                dayNumber = previousMonthDays - firstDay + cell + 1;
+                cellMonth -= 1;
+                if (cellMonth < 0) {
+                    cellMonth = 11;
+                    cellYear -= 1;
+                }
+                muted = true;
+            } else if (cell >= firstDay + daysInMonth) {
+                dayNumber = cell - (firstDay + daysInMonth) + 1;
+                cellMonth += 1;
+                if (cellMonth > 11) {
+                    cellMonth = 0;
+                    cellYear += 1;
+                }
+                muted = true;
+            } else {
+                dayNumber = cell - firstDay + 1;
             }
-        );
 
-    const result =
-        await response
-            .json()
-            .catch(
-                () => ({
-                    success: false,
-                    error:
-                        "Invalid Drive server response."
-                })
-            );
+            const key = `${cellYear}-${String(cellMonth + 1).padStart(2, "0")}-${String(dayNumber).padStart(2, "0")}`;
+            const events = eventMap.get(key) || [];
+            const selected = key === state.calendar.selectedDate;
+            const today = key === todayKey;
 
-    if (
-        !response.ok ||
-        result.success === false
+            html += `
+                <button type="button" class="faculty-calendar-day ${muted ? "muted" : ""} ${selected ? "selected" : ""} ${today ? "today" : ""}" data-calendar-date="${key}">
+                    <span class="calendar-day-number">${dayNumber}</span>
+                    <span class="calendar-event-dots">
+                        ${events.slice(0, 4).map(event => `<i class="calendar-event-dot ${escapeHTML(event.type)}"></i>`).join("")}
+                    </span>
+                    ${events.length ? `<span class="calendar-day-count">${events.length}</span>` : ""}
+                </button>
+            `;
+
+        }
+
+        grid.innerHTML = html;
+        renderFacultyCalendarDay();
+
+    }
+
+
+    function renderFacultyCalendarDay(){const title=$("calendarSelectedDate")||$("facultyCalendarSelectedDate"),count=$("facultyCalendarEventCount"),container=$("calendarEventsList")||$("facultyCalendarEvents");if(!title||!container)return;const events=state.calendar.events.filter(event=>event.date===state.calendar.selectedDate);title.textContent=calendarDateLabel(state.calendar.selectedDate);if(count)count.textContent=`${events.length} event${events.length===1?"":"s"}`;if(!events.length){container.innerHTML=`<div class="calendar-empty">No library activity for this date.</div>`;return;}container.innerHTML=events.map(event=>`<div class="faculty-calendar-event ${escapeHTML(event.type)}"><div class="faculty-calendar-event-icon">${event.type==="issue"?"📚":event.type==="due"?"⏰":event.type==="return"?"↩":event.type==="upload"?"☁":"📩"}</div><div class="faculty-calendar-event-content"><strong>${escapeHTML(event.description)}</strong></div></div>`).join("");}
+
+
+    function initFacultyCalendarEvents() {
+
+        $("facultyCalendarPrev")?.addEventListener("click", () => {
+            state.calendar.month = new Date(state.calendar.month.getFullYear(), state.calendar.month.getMonth() - 1, 1);
+            renderFacultyCalendar();
+        });
+
+        $("facultyCalendarNext")?.addEventListener("click", () => {
+            state.calendar.month = new Date(state.calendar.month.getFullYear(), state.calendar.month.getMonth() + 1, 1);
+            renderFacultyCalendar();
+        });
+        $("calendarPrevBtn")?.addEventListener("click",()=>{state.calendar.month=new Date(state.calendar.month.getFullYear(),state.calendar.month.getMonth()-1,1);renderFacultyCalendar();});
+        $("calendarNextBtn")?.addEventListener("click",()=>{state.calendar.month=new Date(state.calendar.month.getFullYear(),state.calendar.month.getMonth()+1,1);renderFacultyCalendar();});
+
+        $("facultyCalendarToday")?.addEventListener("click", () => {
+            const now = new Date();
+            state.calendar.month = new Date(now.getFullYear(), now.getMonth(), 1);
+            state.calendar.selectedDate = calendarDateKey(now);
+            loadFacultyCalendar();
+        });
+        $("calendarTodayBtn")?.addEventListener("click",()=>{const now=new Date();state.calendar.month=new Date(now.getFullYear(),now.getMonth(),1);state.calendar.selectedDate=calendarDateKey(now);loadFacultyCalendar();});
+
+        $("facultyCalendarGrid")?.addEventListener("click", event => {
+            const day = event.target.closest("[data-calendar-date]");
+            if (!day) return;
+            state.calendar.selectedDate = day.dataset.calendarDate;
+            const parts = state.calendar.selectedDate.split("-").map(Number);
+            state.calendar.month = new Date(parts[0], parts[1] - 1, 1);
+            renderFacultyCalendar();
+        });
+
+    }
+
+
+    /* ========================================================
+       REQUEST BOOK
+    ======================================================== */
+
+    async function requestBook(
+        bookId
     ) {
 
-        throw new Error(
-            result.error ||
-            "Google Drive request failed."
-        );
+        if (!bookId) {
+            return;
+        }
+
+
+        try {
+
+            const {
+                error
+            } =
+                await sb.rpc(
+                    "request_book",
+                    {
+                        p_book_id:
+                            Number(
+                                bookId
+                            )
+                    }
+                );
+
+
+            if (error) {
+                throw error;
+            }
+
+
+            showToast(
+                "Book request submitted."
+            );
+
+
+            await Promise.all([
+                loadFacultyRequests(),
+                loadDashboardStats()
+            ]);
+
+        } catch (error) {
+
+            console.error(
+                error
+            );
+
+
+            showToast(
+                error.message ||
+                "Unable to request book.",
+                "error"
+            );
+
+        }
 
     }
 
-    return result;
-}
+
+    window.requestBook =
+        requestBook;
+
+
+    /* ========================================================
+       DRIVE REQUEST
+    ======================================================== */
+
+    async function driveRequest(
+        action,
+        payload = {},
+        file = null
+    ) {
+
+        const session =
+            await getSession();
+
+
+        if (!session) {
+
+            throw new Error(
+                "Your login session expired. Please login again."
+            );
+
+        }
+
+
+        const form =
+            new FormData();
+
+
+        form.append(
+            "action",
+            action
+        );
+
+
+        Object.entries(
+            payload
+        ).forEach(
+            ([key, value]) => {
+
+                if (
+                    value !== undefined &&
+                    value !== null
+                ) {
+
+                    form.append(
+                        key,
+                        String(value)
+                    );
+
+                }
+
+            }
+        );
+
+
+        if (file) {
+
+            form.append(
+                "file",
+                file
+            );
+
+        }
+
+
+        const response =
+            await fetch(
+                `${window.MATLIB_SUPABASE_URL}/functions/v1/drive-manager`,
+                {
+                    method:
+                        "POST",
+
+                    headers: {
+
+                        "Authorization":
+                            `Bearer ${session.access_token}`,
+
+                        "apikey":
+                            window.MATLIB_SUPABASE_ANON_KEY
+
+                    },
+
+                    body:
+                        form
+                }
+            );
+
+
+        const result =
+            await response
+                .json()
+                .catch(
+                    () => ({
+                        success:
+                            false,
+
+                        error:
+                            "Invalid Drive server response."
+                    })
+                );
+
+
+        if (
+            !response.ok ||
+            result.success ===
+                false
+        ) {
+
+            throw new Error(
+                result.error ||
+                "Google Drive request failed."
+            );
+
+        }
+
+
+        return result;
+
+    }
 
 
     /* ========================================================
        DRIVE LOAD
     ======================================================== */
 
-async function loadDriveDocuments() {
+    async function loadDriveDocuments() {
 
-    if (state.driveLoading) {
-        return;
-    }
+        if (
+            state.driveLoading
+        ) {
+            return;
+        }
 
-    state.driveLoading = true;
 
-    setText(
-        "documentsDriveStatusText",
-        "Loading..."
-    );
+        state.driveLoading =
+            true;
 
-    try {
 
-        const response = await fetch(
-            `${window.MATLIB_SUPABASE_URL}/functions/v1/student-documents`,
-            {
-                method: "POST",
+        setText(
+            "documentsDriveStatusText",
+            "Loading..."
+        );
 
-                headers: {
-                    "Content-Type": "application/json",
 
-                    "apikey":
-                        window.MATLIB_SUPABASE_ANON_KEY,
+        try {
 
-                    "Authorization":
-                        `Bearer ${window.MATLIB_SUPABASE_ANON_KEY}`
-                },
+            const result =
+                await driveRequest(
+                    "list"
+                );
 
-                body: JSON.stringify({
-                    action: "list_question_papers"
-                })
+
+            state.driveRoots =
+                Array.isArray(
+                    result.roots
+                )
+                    ? result.roots
+                    : [];
+
+
+            state.driveFolders =
+                Array.isArray(
+                    result.folders
+                )
+                    ? result.folders
+                    : [];
+
+
+            state.driveFiles =
+                Array.isArray(
+                    result.files
+                )
+                    ? result.files
+                    : [];
+
+            await loadDriveOwners();
+
+
+            if (
+                state.selectedRootId &&
+                !state.driveRoots.some(
+                    root =>
+                        Number(
+                            root.id
+                        ) ===
+                        Number(
+                            state.selectedRootId
+                        )
+                )
+            ) {
+
+                state.selectedRootId =
+                    null;
+
+                state.currentFolderId =
+                    null;
+
             }
-        );
 
-        const result = await response
-            .json()
-            .catch(() => ({
-                success: false,
-                error: "Invalid Documents server response."
-            }));
 
-        if (
-            !response.ok ||
-            result.success === false
-        ) {
-            throw new Error(
-                result.error ||
-                result.message ||
-                "Unable to load Documents."
+            setText(
+                "documentsDriveStatusText",
+                "Connected"
             );
+
+
+            renderDriveRoots();
+
+            renderDriveBreadcrumb();
+
+            renderDriveWorkspace();
+
+            // Document uploads are part of the faculty calendar. Reload the
+            // calendar after Drive data is available so upload events appear.
+            if (state.profile && $("calendarSection")?.classList.contains("active")) {
+                loadFacultyCalendar();
+            }
+
+
+        } catch (error) {
+
+            console.error(
+                "Drive error:",
+                error
+            );
+
+
+            setText(
+                "documentsDriveStatusText",
+                "Connection problem"
+            );
+
+
+            showToast(
+                error.message ||
+                "Unable to connect to Google Drive.",
+                "error"
+            );
+
+
+        } finally {
+
+            state.driveLoading =
+                false;
+
         }
-
-        /*
-         * student-documents already returns:
-         *
-         * roots
-         * folders
-         * files
-         */
-
-        state.driveRoots =
-            Array.isArray(result.roots)
-                ? result.roots
-                : [];
-
-        state.driveFolders =
-            Array.isArray(result.folders)
-                ? result.folders
-                : [];
-
-        state.driveFiles =
-            Array.isArray(result.files)
-                ? result.files
-                : [];
-
-        /*
-         * Reset invalid selection
-         */
-
-        if (
-            state.selectedRootId &&
-            !state.driveRoots.some(
-                root =>
-                    Number(root.id) ===
-                    Number(state.selectedRootId)
-            )
-        ) {
-
-            state.selectedRootId = null;
-            state.currentFolderId = null;
-        }
-
-        setText(
-            "documentsDriveStatusText",
-            "Connected"
-        );
-
-        renderDriveRoots();
-        renderDriveBreadcrumb();
-        renderDriveWorkspace();
-
-    } catch (error) {
-
-        console.error(
-            "Drive/Documents error:",
-            error
-        );
-
-        setText(
-            "documentsDriveStatusText",
-            "Connection problem"
-        );
-
-        showToast(
-            error.message ||
-            "Unable to load Documents.",
-            "error"
-        );
-
-    } finally {
-
-        state.driveLoading = false;
 
     }
-}
 
+
+    async function loadDriveOwners(){const ids=[...new Set([...state.driveRoots.map(x=>x.created_by),...state.driveFolders.map(x=>x.created_by),...state.driveFiles.map(x=>x.uploaded_by)].filter(Boolean).map(String))];state.driveOwners={};if(!ids.length)return;try{const {data,error}=await sb.from("faculty_profiles").select("id,name,faculty_id,email").in("id",ids);if(error)throw error;(data||[]).forEach(person=>state.driveOwners[String(person.id)]=person);}catch(error){console.warn("MatLib: Could not load document owners:",error.message);}}
+    function getDriveOwner(id){return state.driveOwners[String(id)]||null;}
+    function isCurrentFacultyOwner(id){return Boolean(id&&state.profile&&String(id)===String(state.profile.id));}
+    function driveOwnerLabel(id){if(isCurrentFacultyOwner(id))return "You";const owner=getDriveOwner(id);return owner?.name||owner?.faculty_id||"Unknown faculty";}
+    function ensureDriveDetailsModal(){if($("facultyDriveDetailsOverlay"))return;const modal=document.createElement("div");modal.id="facultyDriveDetailsOverlay";modal.className="faculty-drive-details-overlay hidden";modal.innerHTML=`<div class="faculty-drive-details-modal" role="dialog" aria-modal="true"><button type="button" class="drive-details-close" id="facultyDriveDetailsClose">×</button><div class="drive-details-icon" id="facultyDriveDetailsIcon">📄</div><span class="drive-details-eyebrow">DOCUMENT DETAILS</span><h2 id="facultyDriveDetailsTitle">Details</h2><div class="drive-details-grid" id="facultyDriveDetailsGrid"></div><div class="drive-details-actions"><button type="button" class="dashboard-btn secondary" id="facultyDriveDetailsDone">Close</button></div></div>`;document.body.appendChild(modal);$("facultyDriveDetailsClose")?.addEventListener("click",closeDriveDetails);$("facultyDriveDetailsDone")?.addEventListener("click",closeDriveDetails);modal.addEventListener("click",e=>{if(e.target===modal)closeDriveDetails();});}
+    function closeDriveDetails(){$("facultyDriveDetailsOverlay")?.classList.add("hidden");}
+    function showDriveDetails(type,id){ensureDriveDetailsModal();const grid=$("facultyDriveDetailsGrid"),title=$("facultyDriveDetailsTitle"),icon=$("facultyDriveDetailsIcon");if(!grid||!title||!icon)return;let item,details;if(type==="file"){item=state.driveFiles.find(x=>String(x.id)===String(id));if(!item)return;title.textContent=item.name||"File details";icon.textContent=getFileIcon(item);const folder=state.driveFolders.find(x=>x.drive_folder_id===item.folder_drive_id);details=[["Name",item.name||"—"],["Uploaded by",driveOwnerLabel(item.uploaded_by)],["Email",getDriveOwner(item.uploaded_by)?.email||(isCurrentFacultyOwner(item.uploaded_by)?state.profile?.email:"—")],["Type",item.mime_type||getFileType(item)],["Size",formatBytes(item.file_size)],["Uploaded",formatDateTime(item.created_at)],["Folder",folder?.name||getCurrentRoot()?.name||"—"]];}else{item=type==="root"?state.driveRoots.find(x=>String(x.id)===String(id)):state.driveFolders.find(x=>String(x.id)===String(id));if(!item)return;title.textContent=item.name||"Folder details";icon.textContent="📁";const root=state.driveRoots.find(x=>String(x.id)===String(item.root_folder_id))||(type==="root"?item:null);details=[["Folder",item.name||"—"],["Created by",driveOwnerLabel(item.created_by)],["Email",getDriveOwner(item.created_by)?.email||(isCurrentFacultyOwner(item.created_by)?state.profile?.email:"—")],["Created",formatDateTime(item.created_at)],["Root library",root?.name||"—"],["Folder type",type==="root"?"Root folder":"Folder"]];}grid.innerHTML=details.map(([l,v])=>`<div><small>${escapeHTML(l)}</small><strong>${escapeHTML(v)}</strong></div>`).join("");$("facultyDriveDetailsOverlay").classList.remove("hidden");}
 
     /* ========================================================
        DRIVE ROOTS
@@ -1992,42 +2130,13 @@ async function loadDriveDocuments() {
 
 
                         return `
-
-                            <button
-                                type="button"
-                                class="root-folder-chip ${
-                                    selected
-                                        ? "selected"
-                                        : ""
-                                }"
-                                data-drive-root="${
-                                    root.id
-                                }"
-                            >
-
-                                <span class="folder-icon">
-                                    📁
-                                </span>
-
-                                <span>
-
-                                    <strong>
-                                        ${escapeHTML(
-                                            root.name
-                                        )}
-                                    </strong>
-
-                                    <small>
-                                        ${folderCount}
-                                        folders ·
-                                        ${fileCount}
-                                        files
-                                    </small>
-
-                                </span>
-
-                            </button>
-
+                            <div class="root-folder-item ${isCurrentFacultyOwner(root.created_by) ? "owned-by-me" : ""}">
+                                <button type="button" class="root-folder-chip ${selected ? "selected" : ""}" data-drive-root="${root.id}">
+                                    <span class="folder-icon">📁</span>
+                                    <span><strong>${escapeHTML(root.name)}</strong><small>${folderCount} folders · ${fileCount} files</small></span>
+                                </button>
+                                <button type="button" class="drive-root-details" data-drive-root-details="${root.id}" title="Details">i</button>
+                            </div>
                         `;
 
                     }
@@ -2743,7 +2852,7 @@ async function loadDriveDocuments() {
                 folders.map(
                     folder => `
 
-                        <div class="document-row">
+                        <div class="document-row ${isCurrentFacultyOwner(folder.created_by) ? "owned-by-me" : ""}">
 
                             <div
                                 class="document-name"
@@ -2792,16 +2901,8 @@ async function loadDriveDocuments() {
 
 
                             <div class="document-row-actions">
-
-                                <button
-                                    class="document-small-btn"
-                                    data-open-folder="${
-                                        folder.id
-                                    }"
-                                >
-                                    →
-                                </button>
-
+                                <button class="document-small-btn" data-drive-details="folder:${folder.id}" title="Details">i</button>
+                                <button class="document-small-btn" data-open-folder="${folder.id}" title="Open">→</button>
                             </div>
 
                         </div>
@@ -2891,26 +2992,9 @@ async function loadDriveDocuments() {
 
                             <div class="document-row-actions">
 
-                                <button
-                                    class="document-small-btn"
-                                    data-open-file="${
-                                        file.id
-                                    }"
-                                    title="Open"
-                                >
-                                    ↗
-                                </button>
-
-
-                                <button
-                                    class="document-small-btn delete"
-                                    data-delete-file="${
-                                        file.id
-                                    }"
-                                    title="Delete"
-                                >
-                                    ×
-                                </button>
+                                <button class="document-small-btn" data-drive-details="file:${file.id}" title="Details">i</button>
+                                <button class="document-small-btn" data-open-file="${file.id}" title="Open">↗</button>
+                                ${isCurrentFacultyOwner(file.uploaded_by) ? `<button class="document-small-btn delete" data-delete-file="${file.id}" title="Delete">×</button>` : ""}
 
                             </div>
 
@@ -2944,10 +3028,8 @@ async function loadDriveDocuments() {
                         folder => `
 
                             <div
-                                class="folder-card"
-                                data-open-folder="${
-                                    folder.id
-                                }"
+                                class="folder-card ${isCurrentFacultyOwner(folder.created_by) ? "owned-by-me" : ""}"
+                                data-open-folder="${folder.id}"
                             >
 
                                 <div class="folder-card-icon">
@@ -2960,11 +3042,8 @@ async function loadDriveDocuments() {
                                     )}
                                 </strong>
 
-                                <small>
-                                    ${formatDate(
-                                        folder.created_at
-                                    )}
-                                </small>
+                                <small>${formatDate(folder.created_at)}</small>
+                                <div class="folder-card-actions"><button class="document-small-btn" data-drive-details="folder:${folder.id}" title="Details">i</button><button class="document-small-btn" data-open-folder="${folder.id}" title="Open">→</button></div>
 
                             </div>
 
@@ -2983,23 +3062,9 @@ async function loadDriveDocuments() {
 
                                 <div class="card-actions">
 
-                                    <button
-                                        class="document-small-btn"
-                                        data-open-file="${
-                                            file.id
-                                        }"
-                                    >
-                                        ↗
-                                    </button>
-
-                                    <button
-                                        class="document-small-btn delete"
-                                        data-delete-file="${
-                                            file.id
-                                        }"
-                                    >
-                                        ×
-                                    </button>
+                                    <button class="document-small-btn" data-drive-details="file:${file.id}" title="Details">i</button>
+                                    <button class="document-small-btn" data-open-file="${file.id}" title="Open">↗</button>
+                                    ${isCurrentFacultyOwner(file.uploaded_by) ? `<button class="document-small-btn delete" data-delete-file="${file.id}" title="Delete">×</button>` : ""}
 
                                 </div>
 
@@ -3302,9 +3367,12 @@ async function loadDriveDocuments() {
             return;
         }
 
+        if (!isCurrentFacultyOwner(file.uploaded_by)) {
+            showToast("You can delete only documents uploaded by you.", "error");
+            return;
+        }
 
-        if (
-            !confirm(
+        if (!confirm(
                 `Delete "${file.name}"?\n\nThis will remove the document from Google Drive.`
             )
         ) {
@@ -3581,286 +3649,297 @@ async function loadDriveDocuments() {
     }
 
 
-function clearSelectedUploadFile() {
+    function clearSelectedUploadFile() {
 
-    state.selectedUploadFile =
-        null;
-
-    const input =
-        $("documentModalFile");
-
-    if (input) {
-        input.value = "";
-    }
-
-    const info =
-        $("selectedFileInfo");
-
-    const button =
-        $("confirmDocumentUpload");
-
-    const progress =
-        $("uploadProgress");
-
-    const bar =
-        $("uploadProgressBar");
-
-    const text =
-        $("uploadProgressText");
-
-    info?.classList.add(
-        "hidden"
-    );
-
-    if (info) {
-        info.innerHTML =
-            "";
-    }
-
-    if (button) {
-        button.disabled =
-            true;
-    }
-
-    progress?.classList.add(
-        "hidden"
-    );
-
-    if (bar) {
-        bar.style.width =
-            "0%";
-    }
-
-    if (text) {
-        text.textContent =
-            "0%";
-    }
-}
+        state.selectedUploadFile =
+            null;
 
 
-function selectUploadFile(file) {
+        const info =
+            $("selectedFileInfo");
 
-    if (!file) {
-        return;
-    }
 
-    /*
-     * Validate size
-     */
+        const button =
+            $("confirmDocumentUpload");
 
-    if (
-        file.size >
-        25 * 1024 * 1024
-    ) {
 
-        showToast(
-            "Maximum file size is 25 MB.",
-            "error"
+        const progress =
+            $("uploadProgress");
+
+
+        const bar =
+            $("uploadProgressBar");
+
+
+        const text =
+            $("uploadProgressText");
+
+
+        info?.classList.add(
+            "hidden"
         );
 
-        return;
-    }
 
-    /*
-     * Store the actual File object
-     */
-
-    state.selectedUploadFile =
-        file;
-
-    console.log(
-        "MatLib selected upload file:",
-        {
-            name: file.name,
-            size: file.size,
-            type: file.type
+        if (info) {
+            info.innerHTML =
+                "";
         }
-    );
 
-    const info =
-        $("selectedFileInfo");
 
-    const button =
-        $("confirmDocumentUpload");
+        if (button) {
+            button.disabled =
+                true;
+        }
 
-    if (!info || !button) {
-        return;
+
+        progress?.classList.add(
+            "hidden"
+        );
+
+
+        if (bar) {
+            bar.style.width =
+                "0%";
+        }
+
+
+        if (text) {
+            text.textContent =
+                "0%";
+        }
+
     }
 
-    info.classList.remove(
-        "hidden"
-    );
 
-    info.innerHTML = `
+    function selectUploadFile(
+        file
+    ) {
 
-        <span class="selected-file-icon">
-            ${getFileIcon({
-                name: file.name,
-                mime_type: file.type
-            })}
-        </span>
+        if (!file) {
+            return;
+        }
 
-        <div>
 
-            <strong>
-                ${escapeHTML(
-                    file.name
-                )}
-            </strong>
+        if (
+            file.size >
+            25 *
+            1024 *
+            1024
+        ) {
 
-            <span>
-                ${formatBytes(
-                    file.size
-                )}
+            showToast(
+                "Maximum file size is 25 MB.",
+                "error"
+            );
+
+            return;
+
+        }
+
+
+        state.selectedUploadFile =
+            file;
+
+
+        const info =
+            $("selectedFileInfo");
+
+
+        const button =
+            $("confirmDocumentUpload");
+
+
+        info.classList.remove(
+            "hidden"
+        );
+
+
+        info.innerHTML = `
+
+            <span class="selected-file-icon">
+                ${getFileIcon({
+                    name:
+                        file.name,
+
+                    mime_type:
+                        file.type
+                })}
             </span>
 
-        </div>
+            <div>
 
-    `;
+                <strong>
+                    ${escapeHTML(
+                        file.name
+                    )}
+                </strong>
 
-    button.disabled =
-        false;
-}
+                <span>
+                    ${formatBytes(
+                        file.size
+                    )}
+                </span>
+
+            </div>
+
+        `;
+
+
+        button.disabled =
+            false;
+
+    }
 
 
     /* ========================================================
        UPLOAD
     ======================================================== */
 
-async function uploadDocumentFile() {
+    async function uploadDocumentFile() {
 
-    const file =
-        state.selectedUploadFile;
+        const file =
+            state.selectedUploadFile;
 
-    if (!file) {
 
-        showToast(
-            "Please select a file first.",
-            "error"
-        );
-
-        return;
-    }
-
-    console.log(
-        "MatLib starting upload:",
-        {
-            name: file.name,
-            size: file.size,
-            type: file.type
-        }
-    );
-
-    const button =
-        $("confirmDocumentUpload");
-
-    const progress =
-        $("uploadProgress");
-
-    const bar =
-        $("uploadProgressBar");
-
-    const text =
-        $("uploadProgressText");
-
-    button.disabled =
-        true;
-
-    progress.classList.remove(
-        "hidden"
-    );
-
-    try {
-
-        bar.style.width =
-            "20%";
-
-        text.textContent =
-            "20%";
-
-        await new Promise(
-            resolve =>
-                setTimeout(
-                    resolve,
-                    150
-                )
-        );
-
-        bar.style.width =
-            "40%";
-
-        text.textContent =
-            "40%";
-
-        const result =
-            await driveRequest(
-                "upload_file",
-                {
-                    root_id:
-                        state.selectedRootId,
-
-                    folder_id:
-                        state.currentFolderId || ""
-                },
-                file
-            );
-
-        bar.style.width =
-            "85%";
-
-        text.textContent =
-            "85%";
-
-        if (result.file) {
-
-            state.driveFiles.unshift(
-                result.file
-            );
-
+        if (!file) {
+            return;
         }
 
-        bar.style.width =
-            "100%";
 
-        text.textContent =
-            "100%";
+        const button =
+            $("confirmDocumentUpload");
 
-        await new Promise(
-            resolve =>
-                setTimeout(
-                    resolve,
-                    350
-                )
-        );
 
-        closeUploadModal();
+        const progress =
+            $("uploadProgress");
 
-        renderDriveRoots();
 
-        renderDriveWorkspace();
+        const bar =
+            $("uploadProgressBar");
 
-        showToast(
-            "Document uploaded successfully."
-        );
 
-    } catch (error) {
+        const text =
+            $("uploadProgressText");
 
-        console.error(
-            "MatLib upload failed:",
-            error
-        );
 
         button.disabled =
-            false;
+            true;
 
-        showToast(
-            error.message ||
-            "Upload failed.",
-            "error"
+
+        progress.classList.remove(
+            "hidden"
         );
 
+
+        try {
+
+            bar.style.width =
+                "20%";
+
+            text.textContent =
+                "20%";
+
+
+            await new Promise(
+                resolve =>
+                    setTimeout(
+                        resolve,
+                        150
+                    )
+            );
+
+
+            bar.style.width =
+                "40%";
+
+            text.textContent =
+                "40%";
+
+
+            const result =
+                await driveRequest(
+                    "upload_file",
+                    {
+
+                        root_id:
+                            state.selectedRootId,
+
+                        folder_id:
+                            state.currentFolderId ||
+                            ""
+
+                    },
+                    file
+                );
+
+
+            bar.style.width =
+                "85%";
+
+            text.textContent =
+                "85%";
+
+
+            if (
+                result.file
+            ) {
+
+                state.driveFiles.unshift(
+                    result.file
+                );
+
+            }
+
+
+            bar.style.width =
+                "100%";
+
+            text.textContent =
+                "100%";
+
+
+            await new Promise(
+                resolve =>
+                    setTimeout(
+                        resolve,
+                        350
+                    )
+            );
+
+
+            closeUploadModal();
+
+
+            renderDriveRoots();
+
+            renderDriveWorkspace();
+
+
+            showToast(
+                "Document uploaded successfully."
+            );
+
+
+        } catch (error) {
+
+            console.error(
+                error
+            );
+
+
+            button.disabled =
+                false;
+
+
+            showToast(
+                error.message ||
+                "Upload failed.",
+                "error"
+            );
+
+        }
+
     }
-}
 
 
     /* ========================================================
@@ -4101,10 +4180,145 @@ async function uploadDocumentFile() {
 
 
     /* ========================================================
+       PROFILE EDITING
+    ======================================================== */
+
+    function showFacultyProfileHome() {
+        const modal = $("facultyProfileModal");
+        if (!modal) return;
+        const box = modal.querySelector(".faculty-modal-box");
+        if (!box) return;
+        box.innerHTML = `
+            <button type="button" class="modal-close" id="closeFacultyProfileModal">×</button>
+            <span class="modal-icon">✎</span>
+            <h2>Edit Profile</h2>
+            <p>Faculty ID cannot be changed. Other profile details can be updated.</p>
+            <button type="button" class="profile-edit-option" data-profile-change="name">
+                <span class="profile-option-icon">👤</span><span><strong>Change Name</strong><small>Update your faculty name</small></span><span>→</span>
+            </button>
+            <button type="button" class="profile-edit-option" data-profile-change="designation">
+                <span class="profile-option-icon">💼</span><span><strong>Change Designation</strong><small>Update your designation</small></span><span>→</span>
+            </button>
+            <button type="button" class="profile-edit-option" data-profile-change="password">
+                <span class="profile-option-icon">🔐</span><span><strong>Change Password</strong><small>Update your account password</small></span><span>→</span>
+            </button>
+            <button type="button" class="profile-edit-option" data-profile-change="email">
+                <span class="profile-option-icon">✉</span><span><strong>Change Email</strong><small>Update your registered email</small></span><span>→</span>
+            </button>
+            <button type="button" class="profile-edit-option" data-profile-change="phone">
+                <span class="profile-option-icon">📱</span><span><strong>Change Mobile No.</strong><small>Update your mobile number</small></span><span>→</span>
+            </button>
+            <div id="facultyProfileMessage" class="modal-message"></div>
+        `;
+        modal.querySelector("#closeFacultyProfileModal")?.addEventListener("click", closeFacultyProfileModal);
+        modal.querySelectorAll("[data-profile-change]").forEach(btn => {
+            btn.addEventListener("click", () => openFacultyProfileChange(btn.dataset.profileChange));
+        });
+    }
+
+    function openFacultyProfileEditor() {
+        const modal = $("facultyProfileModal");
+        if (!modal) return;
+        showFacultyProfileHome();
+        modal.classList.remove("hidden");
+    }
+
+    function closeFacultyProfileModal() {
+        $("facultyProfileModal")?.classList.add("hidden");
+    }
+
+    function openFacultyProfileChange(type) {
+        const modal = $("facultyProfileModal");
+        const box = modal?.querySelector(".faculty-modal-box");
+        if (!modal || !box) return;
+        const profile = state.profile || {};
+        const config = {
+            name: {title:"Change Name", label:"Full name", value:profile.name || "", type:"text", key:"name"},
+            designation: {title:"Change Designation", label:"Designation", value:profile.designation || "", type:"text", key:"designation"},
+            phone: {title:"Change Mobile No.", label:"Mobile number", value:profile.phone || "", type:"tel", key:"phone"},
+            email: {title:"Change Email", label:"Email address", value:profile.email || "", type:"email", key:"email"}
+        };
+        if (type === "password") {
+            box.innerHTML = `
+                <button type="button" class="modal-close" id="closeFacultyProfileModal">×</button>
+                <span class="modal-icon">🔐</span><h2>Change Password</h2>
+                <p>Enter a new password. No verification code is required.</p>
+                <label class="profile-form-label">New password<input id="facultyProfileNewPassword" type="password" minlength="6" autocomplete="new-password" placeholder="Minimum 6 characters"></label>
+                <label class="profile-form-label">Confirm password<input id="facultyProfileConfirmPassword" type="password" minlength="6" autocomplete="new-password" placeholder="Repeat password"></label>
+                <div id="facultyProfileMessage" class="modal-message"></div>
+                <div class="profile-form-actions"><button type="button" class="cancel-button" id="facultyProfileBack">Back</button><button type="button" class="send-button" id="facultyProfileSave">Save Password</button></div>`;
+        } else {
+            const c = config[type];
+            box.innerHTML = `
+                <button type="button" class="modal-close" id="closeFacultyProfileModal">×</button>
+                <span class="modal-icon">✎</span><h2>${c.title}</h2>
+                <p>Faculty ID is not editable.</p>
+                <label class="profile-form-label">${c.label}<input id="facultyProfileChangeValue" type="${c.type}" value="${escapeHTML(c.value)}" autocomplete="off"></label>
+                <div id="facultyProfileMessage" class="modal-message"></div>
+                <div class="profile-form-actions"><button type="button" class="cancel-button" id="facultyProfileBack">Back</button><button type="button" class="send-button" id="facultyProfileSave">Save Changes</button></div>`;
+        }
+        modal.classList.remove("hidden");
+        $("closeFacultyProfileModal")?.addEventListener("click", closeFacultyProfileModal);
+        $("facultyProfileBack")?.addEventListener("click", showFacultyProfileHome);
+        $("facultyProfileSave")?.addEventListener("click", () => saveFacultyProfileChange(type));
+    }
+
+    async function saveFacultyProfileChange(type) {
+        const message = $("facultyProfileMessage");
+        const save = $("facultyProfileSave");
+        const setMessage = (text, error=false) => { if(message){message.textContent=text;message.className=`modal-message ${error?"error":"success"}`;} };
+        if (save) { save.disabled=true; save.textContent="Saving..."; }
+        try {
+            if (!state.profile?.id) throw new Error("Faculty profile is not loaded.");
+            if (type === "password") {
+                const password = $("facultyProfileNewPassword")?.value || "";
+                const confirm = $("facultyProfileConfirmPassword")?.value || "";
+                if (password.length < 6) throw new Error("Password must contain at least 6 characters.");
+                if (password !== confirm) throw new Error("Passwords do not match.");
+                const { error } = await sb.auth.updateUser({ password });
+                if (error) throw error;
+                setMessage("Password changed successfully.");
+                setTimeout(closeFacultyProfileModal, 700);
+                return;
+            }
+            const value = String($("facultyProfileChangeValue")?.value || "").trim();
+            if (!value) throw new Error("Please enter a value.");
+            if (type === "email") {
+                if (!/^\S+@\S+\.\S+$/.test(value)) throw new Error("Enter a valid email address.");
+                const { error: authError } = await sb.auth.updateUser({ email: value });
+                if (authError) throw authError;
+                const { error: profileError } = await sb.from("faculty_profiles").update({ email: value }).eq("id", state.profile.id);
+                if (profileError) throw profileError;
+                state.profile.email = value;
+            } else {
+                const payload = { [type]: value };
+                const { error } = await sb.from("faculty_profiles").update(payload).eq("id", state.profile.id);
+                if (error) throw error;
+                state.profile[type] = value;
+            }
+            updateFacultyUI();
+            setMessage(`${type === "phone" ? "Mobile number" : type[0].toUpperCase()+type.slice(1)} updated successfully.`);
+            setTimeout(closeFacultyProfileModal, 700);
+        } catch (error) {
+            console.error("Faculty profile update error:", error);
+            setMessage(error.message || "Unable to update profile.", true);
+        } finally {
+            if (save) { save.disabled=false; save.textContent=type === "password" ? "Save Password" : "Save Changes"; }
+        }
+    }
+
+    /* ========================================================
        EVENTS
     ======================================================== */
 
     function initEvents() {
+
+        initFacultyCalendarEvents();
+
+        $("facultyProfileEditBtn")?.addEventListener("click", openFacultyProfileEditor);
+        $("facultyProfileModal")?.addEventListener("click", event => {
+            if (event.target.id === "facultyProfileModal") closeFacultyProfileModal();
+        });
 
 
         /* SIDEBAR */
@@ -4129,6 +4343,11 @@ async function uploadDocumentFile() {
 
                 }
             );
+
+
+        $("facultyQuickCatalogueBtn")?.addEventListener("click", () => {
+            showSection("catalogueSection");
+        });
 
 
         /* QUICK ACTIONS */
@@ -4188,19 +4407,30 @@ async function uploadDocumentFile() {
             );
 
 
-        $("refreshHistoryBtn")
-            ?.addEventListener(
-                "click",
-                loadFacultyHistory
-            );
-
-
         $("refreshRequestsBtn")
             ?.addEventListener(
                 "click",
                 loadFacultyRequests
             );
 
+
+        $("refreshReturnsBtn")
+            ?.addEventListener(
+                "click",
+                loadFacultyReturns
+            );
+
+        $("refreshHistoryBtn")
+            ?.addEventListener(
+                "click",
+                loadFacultyHistory
+            );
+
+        $("refreshRejectionsBtn")
+            ?.addEventListener(
+                "click",
+                loadFacultyRejections
+            );
 
 
         /* RETURN / CANCEL */
@@ -4330,6 +4560,11 @@ async function uploadDocumentFile() {
                 }
 
 
+                const detailsButton = event.target.closest("[data-drive-details]");
+                if(detailsButton){const [type,id]=String(detailsButton.dataset.driveDetails||"").split(":");if(type&&id)showDriveDetails(type,id);return;}
+                const rootDetailsButton = event.target.closest("[data-drive-root-details]");
+                if(rootDetailsButton){showDriveDetails("root",rootDetailsButton.dataset.driveRootDetails);return;}
+
                 const homeButton =
                     event.target.closest(
                         "[data-breadcrumb-home]"
@@ -4399,6 +4634,11 @@ async function uploadDocumentFile() {
             }
         );
 
+
+        /* TABLE SEARCH + PAGINATION */
+        const tableSearchBindings=[["borrowedBookSearch","borrowedSearch","borrowedPage",renderFacultyBorrowed],["historyBookSearch","historySearch","historyPage",renderFacultyHistory],["rejectionBookSearch","rejectionSearch","rejectionPage",renderFacultyRejections]];
+        tableSearchBindings.forEach(([inputId,searchKey,pageKey,renderer])=>{$(inputId)?.addEventListener("input",event=>{state.table[searchKey]=event.target.value;state.table[pageKey]=1;renderer();});});
+        document.addEventListener("click",event=>{const b=event.target.closest("[data-faculty-page]");if(!b||b.disabled)return;const [key,page]=String(b.dataset.facultyPage||"").split(":");const n=Number(page);if(!key||!Number.isFinite(n))return;if(key==="borrowed"){state.table.borrowedPage=n;renderFacultyBorrowed();}if(key==="history"){state.table.historyPage=n;renderFacultyHistory();}if(key==="rejection"){state.table.rejectionPage=n;renderFacultyRejections();}});
 
         /* DOCUMENTS */
 
@@ -4493,8 +4733,8 @@ async function uploadDocumentFile() {
 
 
                 closeNewFolderModal();
-
                 closeUploadModal();
+                closeDriveDetails();
 
             }
         );
@@ -4630,9 +4870,6 @@ window.logout = logout;
             initFileUpload();
 
 
-            initBookViewTabs();
-        initTableSearch();
-
             await Promise.all([
 
                 loadDashboardStats(),
@@ -4641,7 +4878,7 @@ window.logout = logout;
 
                 loadFacultyRequests(),
 
-                loadFacultyHistory(),
+                loadFacultyReturns(),
 
                 loadDriveDocuments()
 
@@ -4731,114 +4968,6 @@ sb.auth.onAuthStateChange(
     }
 );
 
-
-
-    async function loadFacultyHistory() {
-        const tbody = $("facultyHistoryBody");
-        if (!tbody || !state.profile) return;
-        tbody.innerHTML = `<tr><td colspan="7" class="table-loading">Loading history...</td></tr>`;
-        try {
-            const { data: borrowData, error: borrowError } = await sb.from("borrow_records")
-                .select(`id, issued_at, due_date, returned_at, status, books (id, book_name, author_name, access_no, cupboard_no)`)
-                .eq("faculty_id", state.profile.id)
-                .order("issued_at", { ascending: false });
-            if (borrowError) throw borrowError;
-
-            const borrowRows = borrowData || [];
-            const historyRows = borrowRows.filter(row =>
-                Boolean(row.returned_at)
-            );
-
-            if (!historyRows.length) {
-                tbody.innerHTML = `<tr><td colspan="7" class="empty-table">No returned books in history.</td></tr>`;
-                return;
-            }
-
-            tbody.innerHTML = historyRows.map(row => {
-                const book = Array.isArray(row.books) ? row.books[0] : row.books;
-                return `<tr>
-                    <td><strong>${escapeHTML(book?.book_name || "Unknown Book")}</strong></td>
-                    <td>${escapeHTML(book?.author_name || "-")}</td>
-                    <td>${escapeHTML(book?.access_no || "-")}</td>
-                    <td>${escapeHTML(book?.cupboard_no || "-")}</td>
-                    <td>${formatDate(row.issued_at)}</td>
-                    <td>${formatDate(row.returned_at)}</td>
-                    <td><span class="status-pill status-returned">Returned</span></td>
-                </tr>`;
-            }).join("");
-        } catch (error) {
-            console.error("History loading error:", error);
-            tbody.innerHTML = `<tr><td colspan="7" class="empty-table">Unable to load book history.</td></tr>`;
-        }
-    }
-
-    function initBookViewTabs() {
-        document.querySelectorAll("[data-book-view]").forEach(button => {
-            button.addEventListener("click", async () => {
-                state.borrowedBookView = button.dataset.bookView === "requested" ? "requested" : "active";
-                document.querySelectorAll("[data-book-view]").forEach(item => {
-                    item.classList.toggle("active", item === button);
-                });
-                await loadFacultyBorrowed();
-            });
-        });
-    }
-
-    /* ========================================================
-       TABLE SEARCH
-       Searches the currently rendered rows for borrowed books and
-       active book requests.
-    ======================================================== */
-
-    function filterTableRows(tbodyId, searchValue) {
-        const tbody = $(tbodyId);
-        if (!tbody) return;
-
-        const query = String(searchValue || "").trim().toLowerCase();
-        const rows = Array.from(tbody.querySelectorAll("tr"));
-
-        rows.forEach(row => {
-            // Never hide loading / empty-state rows.
-            if (row.classList.contains("table-loading") || row.classList.contains("empty-table")) {
-                row.hidden = false;
-                return;
-            }
-            row.hidden = query !== "" && !row.textContent.toLowerCase().includes(query);
-        });
-    }
-
-    function applyTableSearches() {
-        filterTableRows("facultyBorrowedBody", $("borrowSearch")?.value);
-        filterTableRows("facultyHistoryBody", $("historySearch")?.value);
-        filterTableRows("facultyRequestsBody", $("requestSearch")?.value);
-    }
-
-    function initTableSearch() {
-        [
-            ["borrowSearch", "facultyBorrowedBody"],
-            ["requestSearch", "facultyRequestsBody"]
-        ].forEach(([inputId, tbodyId]) => {
-            const input = $(inputId);
-            if (!input) return;
-
-            input.addEventListener("input", () => {
-                filterTableRows(tbodyId, input.value);
-                if (inputId === "borrowSearch") {
-                    filterTableRows("facultyHistoryBody", input.value);
-                }
-            });
-        });
-
-        document.querySelectorAll("[data-clear-search]").forEach(button => {
-            button.addEventListener("click", () => {
-                const input = $(button.dataset.clearSearch);
-                if (!input) return;
-                input.value = "";
-                input.dispatchEvent(new Event("input"));
-                input.focus();
-            });
-        });
-    }
 
     /* ========================================================
        START

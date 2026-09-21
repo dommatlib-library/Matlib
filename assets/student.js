@@ -266,9 +266,7 @@ async function handleStudentLogin(
         );
 
 
-        showStudentDashboard(
-            student
-        );
+        window.location.href = "student-dashboard.html";
 
     } catch (error) {
 

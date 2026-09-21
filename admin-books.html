@@ -1,20 +1,840 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MatLib — Book Catalogue</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/admin-dashboard.css"><link rel="stylesheet" href="assets/admin-books.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="assets/config.js"></script>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Manage Books — MatLib Admin</title>
+
+    <link
+        rel="stylesheet"
+        href="assets/style.css"
+    >
+
+    <link
+        rel="stylesheet"
+        href="assets/admin-books.css"
+    >
+
 </head>
+
+
 <body class="admin-books-page">
-<header class="admin-books-header"><div class="admin-books-brand"><a class="brand-link" href="admin-dashboard.html"><span class="brand-mark">√x</span><span>MatLib</span></a><span class="admin-label">ADMIN</span></div><div class="admin-header-right"><span class="system-status"><span class="status-dot"></span>System Online</span><button class="back-btn" type="button" onclick="window.location.href='admin-dashboard.html'">← Dashboard</button></div></header>
-<main class="admin-books-main">
-<section class="catalog-hero"><div><span class="eyebrow">MATLIB ADMINISTRATION</span><h1>Book Catalogue</h1><p>Browse all library books in a faculty-style catalogue with pagination.</p></div><div class="catalog-count"><strong id="totalBooks">0</strong><span>BOOKS</span></div></section>
-<section class="catalog-stats"><div><span>▥</span><strong id="availableBooks">0</strong><small>Available</small></div><div><span>↗</span><strong id="issuedBooks">0</strong><small>Issued</small></div><div><span>◈</span><strong id="categoryCount">0</strong><small>Categories</small></div></section>
-<section class="catalog-panel"><div class="catalog-toolbar-main"><input id="catalogSearch" placeholder="Search book, author, access number…"><select id="catalogCategory"><option value="">All categories</option></select><select id="catalogStatus"><option value="">All status</option><option value="available">Available</option><option value="issued">Issued</option><option value="inactive">Inactive</option></select><button id="catalogRefresh" class="btn secondary">↻ Refresh</button></div><div id="catalogGrid" class="admin-catalog-grid"></div><div id="catalogPager" class="catalog-pager"></div></section>
-</main>
-<script src="assets/admin-books.js"></script>
+
+
+    <!-- ======================================================
+         HEADER
+    ======================================================= -->
+
+    <header class="admin-books-header">
+
+        <div class="admin-books-brand">
+
+            <a
+                href="admin-dashboard.html"
+                class="brand-link"
+            >
+
+                <span class="brand-mark">
+                    √x
+                </span>
+
+                <span>
+                    MatLib
+                </span>
+
+            </a>
+
+
+            <span class="admin-label">
+                ADMIN
+            </span>
+
+        </div>
+
+
+        <div class="admin-header-right">
+
+            <span
+                class="system-status"
+            >
+
+                <span class="status-dot"></span>
+
+                System Online
+
+            </span>
+
+
+            <button
+                type="button"
+                class="back-btn"
+                onclick="window.location.href='admin-dashboard.html'"
+            >
+                ← Dashboard
+            </button>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- ======================================================
+         MAIN
+    ======================================================= -->
+
+    <main class="admin-books-main">
+
+
+        <!-- ==================================================
+             HERO
+        =================================================== -->
+
+        <section class="admin-books-hero">
+
+            <div class="hero-left">
+
+                <span class="hero-eyebrow">
+                    MATLIB ADMINISTRATION
+                </span>
+
+
+                <h1>
+                    Book Catalogue
+                </h1>
+
+
+                <p>
+                    Manage books, check availability and see
+                    which faculty member currently holds a book.
+                </p>
+
+            </div>
+
+
+            <div class="hero-actions">
+                <button type="button" class="pdf-export-btn" id="exportBooksPdf">PDF</button>
+            </div>
+
+
+            <div class="hero-stat">
+
+                <span class="hero-stat-number" id="adminBookCount">
+                    0
+                </span>
+
+                <span class="hero-stat-label">
+                    Books
+                </span>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- ==================================================
+             QUICK STATS
+        =================================================== -->
+
+        <section class="admin-book-stats">
+
+
+            <div class="admin-mini-stat">
+
+                <div class="mini-icon">
+                    📚
+                </div>
+
+                <div>
+
+                    <span
+                        id="adminTotalBooks"
+                        class="mini-number"
+                    >
+                        0
+                    </span>
+
+                    <span class="mini-label">
+                        Total Books
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="admin-mini-stat available-stat">
+
+                <div class="mini-icon">
+                    ✓
+                </div>
+
+                <div>
+
+                    <span
+                        id="adminAvailableBooks"
+                        class="mini-number"
+                    >
+                        0
+                    </span>
+
+                    <span class="mini-label">
+                        Available
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="admin-mini-stat issued-stat">
+
+                <div class="mini-icon">
+                    ↗
+                </div>
+
+                <div>
+
+                    <span
+                        id="adminIssuedBooks"
+                        class="mini-number"
+                    >
+                        0
+                    </span>
+
+                    <span class="mini-label">
+                        Issued
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="admin-mini-stat">
+
+                <div class="mini-icon">
+                    🏷
+                </div>
+
+                <div>
+
+                    <span
+                        id="adminCategoryCount"
+                        class="mini-number"
+                    >
+                        0
+                    </span>
+
+                    <span class="mini-label">
+                        Categories
+                    </span>
+
+                </div>
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- ==================================================
+             CONTROL PANEL
+        =================================================== -->
+
+        <section class="admin-book-control-card">
+
+
+            <div class="control-top">
+
+                <div>
+
+                    <span class="section-eyebrow">
+                        LIBRARY INVENTORY
+                    </span>
+
+                    <h2>
+                        Manage Books
+                    </h2>
+
+                </div>
+
+
+                <button
+                    type="button"
+                    class="refresh-btn"
+                    id="adminBooksRefresh"
+                >
+                    ↻ Refresh
+                </button>
+
+            </div>
+
+
+
+            <!-- ==============================================
+                 SEARCH
+            =============================================== -->
+
+            <div class="admin-book-controls">
+
+
+                <div class="admin-search-box">
+
+                    <span class="search-icon">
+                        ⌕
+                    </span>
+
+
+                    <input
+                        type="text"
+                        id="bookSearch"
+                        placeholder="Search book, author, accession number, cupboard..."
+                        autocomplete="off"
+                    >
+
+                    <button
+                        type="button"
+                        id="clearBookSearch"
+                        class="clear-search"
+                        aria-label="Clear search"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+
+
+                <!-- CATEGORY -->
+
+                <select
+                    id="bookCategoryFilter"
+                    class="admin-filter"
+                >
+
+                    <option value="">
+                        All Categories
+                    </option>
+
+                </select>
+
+
+
+                <!-- AVAILABILITY -->
+
+                <select
+                    id="bookAvailabilityFilter"
+                    class="admin-filter"
+                >
+
+                    <option value="">
+                        All Books
+                    </option>
+
+                    <option value="available">
+                        Available
+                    </option>
+
+                    <option value="issued">
+                        Issued
+                    </option>
+
+                </select>
+
+
+            </div>
+
+
+
+            <!-- ==============================================
+                 RESULT INFORMATION
+            =============================================== -->
+
+            <div class="result-bar">
+
+                <span id="adminBookResult">
+                    Loading books...
+                </span>
+
+
+                <button
+                    type="button"
+                    id="adminResetFilters"
+                    class="reset-filter-btn"
+                >
+                    Reset Filters
+                </button>
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- ==================================================
+             BOOK TABLE
+        =================================================== -->
+
+        <section class="admin-book-table-card">
+
+
+            <div class="table-heading">
+
+                <div>
+
+                    <span class="section-eyebrow">
+                        CATALOGUE
+                    </span>
+
+                    <h2>
+                        All Books
+                    </h2>
+
+                </div>
+
+
+                <div class="table-note">
+
+                    <span class="table-note-dot"></span>
+
+                    Live database data
+
+                </div>
+
+            </div>
+
+
+
+            <div class="admin-book-table-wrapper">
+
+                <table
+                    class="admin-book-table"
+                >
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                #
+                            </th>
+
+                            <th>
+                                BOOK
+                            </th>
+
+                            <th>
+                                AUTHOR
+                            </th>
+
+                            <th>
+                                ACCESS NO.
+                            </th>
+
+                            <th>
+                                CATEGORY
+                            </th>
+
+                            <th>
+                                CUPBOARD
+                            </th>
+
+                            <th>
+                                STATUS
+                            </th>
+
+                            <th>
+                                ISSUED TO
+                            </th>
+
+                            <th>
+                                ACTION
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody
+                        id="booksBody"
+                    >
+
+                        <tr>
+
+                            <td
+                                colspan="9"
+                                class="table-loading"
+                            >
+
+                                <div class="loading-spinner"></div>
+
+                                Loading catalogue...
+
+                            </td>
+
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+
+
+            <!-- ==================================================
+                 MOBILE CARDS
+            =================================================== -->
+
+            <div
+                id="adminBookMobileList"
+                class="admin-book-mobile-list"
+            >
+            </div>
+
+
+        </section>
+
+
+
+        <!-- ==================================================
+             EMPTY STATE
+        =================================================== -->
+
+        <section
+            id="adminBooksEmpty"
+            class="admin-books-empty hidden"
+        >
+
+            <div class="empty-icon">
+                📚
+            </div>
+
+            <h2>
+                No books found
+            </h2>
+
+            <p>
+                Try changing your search or filters.
+            </p>
+
+            <button
+                type="button"
+                id="emptyResetBtn"
+                class="empty-reset-btn"
+            >
+                Clear Filters
+            </button>
+
+        </section>
+
+
+    </main>
+
+
+
+    <!-- ======================================================
+         ISSUE DETAILS MODAL
+         The admin-books.js dynamically creates the modal.
+    ======================================================= -->
+
+
+
+    <!-- ======================================================
+         TOAST
+    ======================================================= -->
+
+    <div
+        id="adminBooksToast"
+        class="admin-books-toast"
+    >
+
+        <span
+            class="toast-icon"
+            id="adminToastIcon"
+        >
+            ✓
+        </span>
+
+        <span
+            id="adminToastText"
+        >
+            Done
+        </span>
+
+    </div>
+
+
+
+    <!-- ======================================================
+         SCRIPTS
+    ======================================================= -->
+
+    <script
+        src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"
+    ></script>
+
+    <script
+        src="assets/config.js"
+    ></script>
+
+    <!-- Existing MatLib functions -->
+    <script
+        src="assets/app.js"
+    ></script>
+
+    <!-- Admin book page -->
+    <script
+        src="assets/admin-books.js"
+    ></script>
+
+
+    <!-- ======================================================
+         PAGE-SPECIFIC UI HANDLER
+    ======================================================= -->
+
+    <script>
+
+        document.addEventListener(
+            "DOMContentLoaded",
+            function () {
+
+                const search =
+                    document.getElementById(
+                        "bookSearch"
+                    );
+
+                const clear =
+                    document.getElementById(
+                        "clearBookSearch"
+                    );
+
+                const reset =
+                    document.getElementById(
+                        "adminResetFilters"
+                    );
+
+                const refresh =
+                    document.getElementById(
+                        "adminBooksRefresh"
+                    );
+
+                const emptyReset =
+                    document.getElementById(
+                        "emptyResetBtn"
+                    );
+
+
+                /*
+                 * SEARCH
+                 */
+
+                if (search) {
+
+                    search.addEventListener(
+                        "input",
+                        function () {
+
+                            if (clear) {
+
+                                clear.style.display =
+                                    search.value
+                                        ? "flex"
+                                        : "none";
+
+                            }
+
+                        }
+                    );
+
+                }
+
+
+                /*
+                 * CLEAR SEARCH
+                 */
+
+                if (clear) {
+
+                    clear.addEventListener(
+                        "click",
+                        function () {
+
+                            if (search) {
+
+                                search.value =
+                                    "";
+
+                                search.dispatchEvent(
+                                    new Event(
+                                        "input"
+                                    )
+                                );
+
+                            }
+
+
+                            if (
+                                typeof window.loadBooks ===
+                                "function"
+                            ) {
+
+                                window.loadBooks();
+
+                            }
+
+                        }
+                    );
+
+                }
+
+
+                /*
+                 * RESET
+                 */
+
+                function resetFilters() {
+
+                    if (search) {
+
+                        search.value =
+                            "";
+
+                    }
+
+
+                    const category =
+                        document.getElementById(
+                            "bookCategoryFilter"
+                        );
+
+
+                    const availability =
+                        document.getElementById(
+                            "bookAvailabilityFilter"
+                        );
+
+
+                    if (category) {
+
+                        category.value =
+                            "";
+
+                    }
+
+
+                    if (availability) {
+
+                        availability.value =
+                            "";
+
+                    }
+
+
+                    if (clear) {
+
+                        clear.style.display =
+                            "none";
+
+                    }
+
+
+                    if (
+                        typeof window.loadBooks ===
+                        "function"
+                    ) {
+
+                        window.loadBooks();
+
+                    }
+
+                }
+
+
+                if (reset) {
+
+                    reset.addEventListener(
+                        "click",
+                        resetFilters
+                    );
+
+                }
+
+
+                if (emptyReset) {
+
+                    emptyReset.addEventListener(
+                        "click",
+                        resetFilters
+                    );
+
+                }
+
+
+                /*
+                 * REFRESH
+                 */
+
+                if (refresh) {
+
+                    refresh.addEventListener(
+                        "click",
+                        async function () {
+
+                            refresh.classList.add(
+                                "spinning"
+                            );
+
+
+                            try {
+
+                                if (
+                                    typeof window.loadBooks ===
+                                    "function"
+                                ) {
+
+                                    await window.loadBooks();
+
+                                }
+
+                            } finally {
+
+                                setTimeout(
+                                    function () {
+
+                                        refresh.classList.remove(
+                                            "spinning"
+                                        );
+
+                                    },
+                                    400
+                                );
+
+                            }
+
+                        }
+                    );
+
+                }
+
+            }
+        );
+
+    </script>
+
+
 </body>
+
 </html>

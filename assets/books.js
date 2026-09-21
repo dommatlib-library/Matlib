@@ -1,13 +1,19 @@
 (() => {
   "use strict";
 
+  const isEmbedded = new URLSearchParams(window.location.search).get("embedded") === "1";
+  if (isEmbedded) document.body.classList.add("books-embedded");
+
   const state = {
     allBooks: [],
     filteredBooks: [],
     currentPage: 1,
     booksPerPage: 12,
     selectedBook: null,
-    loading: false
+    loading: false,
+    currentFacultyId: null,
+    pendingRequestBookIds: new Set(),
+    issuedBookIds: new Set()
   };
 
   const elements = {
@@ -21,6 +27,7 @@
 
     searchInput: document.getElementById("searchInput"),
     clearSearch: document.getElementById("clearSearch"),
+    categoryFilter: document.getElementById("categoryFilter"),
     availabilityFilter: document.getElementById("availabilityFilter"),
     sortSelect: document.getElementById("sortSelect"),
     clearFilters: document.getElementById("clearFilters"),
@@ -158,36 +165,81 @@ function createBookCard(book, index) {
           </div>
         </div>
 
-        ${
-          isAvailable
-            ? `
-              <button
-                class="request-book-btn"
-                type="button"
-                data-book-id="${book.id}"
-                data-book-name="${bookName}"
-              >
-                <span>📩</span>
-                Request Book
-              </button>
-            `
-            : `
-              <button
-                class="request-book-btn request-disabled"
-                type="button"
-                disabled
-                aria-disabled="true"
-                title="This book is currently issued"
-              >
-                <span>📕</span>
-                Request Book
-              </button>
-            `
-        }
+        ${(() => {
+          const id = String(book.id);
+          const issuedToMe = state.issuedBookIds.has(id);
+          const alreadyRequested = state.pendingRequestBookIds.has(id);
+
+          if (issuedToMe) {
+            return `<button class="request-book-btn request-disabled" type="button" disabled aria-disabled="true" title="This book is already issued to you"><span>📕</span> Issued</button>`;
+          }
+
+          if (!isAvailable) {
+            return `<button class="request-book-btn request-disabled" type="button" disabled aria-disabled="true" title="This book is currently issued"><span>📕</span> Issued</button>`;
+          }
+
+          if (alreadyRequested) {
+            return `<button class="request-book-btn request-disabled" type="button" disabled aria-disabled="true" title="You already requested this book"><span>📩</span> Requested</button>`;
+          }
+
+          return `<button class="request-book-btn" type="button" data-book-id="${book.id}" data-book-name="${bookName}"><span>📩</span> Request Book</button>`;
+        })()}
       </div>
     </article>
   `;
 }
+
+  async function loadFacultyBookStates() {
+    state.pendingRequestBookIds = new Set();
+    state.issuedBookIds = new Set();
+
+    const { data: userData } = await sb.auth.getUser();
+    const user = userData?.user;
+    if (!user?.id) return;
+
+    state.currentFacultyId = user.id;
+
+    const [requestResult, borrowResult] = await Promise.all([
+      sb.from("book_requests")
+        .select("book_id,status")
+        .eq("faculty_id", user.id)
+        .eq("status", "pending"),
+      sb.from("borrow_records")
+        .select("book_id,status,returned_at")
+        .eq("faculty_id", user.id)
+        .eq("status", "Issued")
+        .is("returned_at", null)
+    ]);
+
+    if (requestResult.error) throw requestResult.error;
+    if (borrowResult.error) throw borrowResult.error;
+
+    (requestResult.data || []).forEach(row => state.pendingRequestBookIds.add(String(row.book_id)));
+    (borrowResult.data || []).forEach(row => state.issuedBookIds.add(String(row.book_id)));
+  }
+
+
+  async function loadCategories() {
+    if (!elements.categoryFilter) return;
+
+    const { data, error } = await sb
+      .from("categories")
+      .select("id,name")
+      .order("id", { ascending: true });
+
+    if (error) {
+      console.warn("MatLib: Category load failed:", error.message);
+      return;
+    }
+
+    const options = (data || []).map(row => {
+      const name = row.name || row.category_name || row.category || `Category ${row.id}`;
+      return `<option value="${escapeHtml(row.id)}">${escapeHtml(name)}</option>`;
+    }).join("");
+
+    elements.categoryFilter.innerHTML = `<option value="all">All Categories</option>${options}`;
+  }
+
 
   async function loadBooks() {
     state.loading = true;
@@ -245,6 +297,8 @@ function createBookCard(book, index) {
       state.allBooks = allBooks;
       state.currentPage = 1;
 
+      await loadFacultyBookStates();
+
       elements.booksCount.textContent =
         `${allBooks.length.toLocaleString()} books`;
 
@@ -267,6 +321,9 @@ function createBookCard(book, index) {
       elements.searchInput.value
     );
 
+    const categoryValue =
+      elements.categoryFilter?.value || "all";
+
     const availabilityValue =
       elements.availabilityFilter.value;
 
@@ -287,6 +344,10 @@ function createBookCard(book, index) {
         !searchValue ||
         searchableText.includes(searchValue);
 
+      const matchesCategory =
+        categoryValue === "all" ||
+        String(book.category_id ?? "") === String(categoryValue);
+
       const matchesAvailability =
         availabilityValue === "all" ||
         (availabilityValue === "available" &&
@@ -294,7 +355,7 @@ function createBookCard(book, index) {
         (availabilityValue === "issued" &&
           !isAvailable(book));
 
-      return matchesSearch && matchesAvailability;
+      return matchesSearch && matchesCategory && matchesAvailability;
     });
 
     sortBooks(sortValue);
@@ -533,8 +594,10 @@ function createBookCard(book, index) {
     elements.requestBookName.textContent =
       bookName;
 
-    elements.requestMessage.value =
-      `I would like to request the book "${bookName}".`;
+    if (elements.requestMessage) {
+      elements.requestMessage.value =
+        `I would like to request the book "${bookName}".`;
+    }
 
     elements.requestError.textContent = "";
     elements.requestError.classList.add("hidden");
@@ -561,107 +624,62 @@ function createBookCard(book, index) {
   }
 
 async function sendBookRequest() {
-  if (!state.selectedBook) {
-    return;
-  }
+  if (!state.selectedBook) return;
 
   const book = state.selectedBook;
 
-  if (!isAvailable(book)) {
-    return;
-  }
-
-  const message =
-    elements.requestMessage.value.trim();
-
-  if (!message) {
-    showRequestError(
-      "Please enter a message."
-    );
-    return;
-  }
+  if (!isAvailable(book)) return;
 
   elements.sendRequest.disabled = true;
-  elements.sendRequest.textContent =
-    "Sending...";
-
+  elements.sendRequest.textContent = "Sending...";
   elements.requestError.classList.add("hidden");
 
   try {
-    // Get the currently logged-in faculty
-    const {
-      data: { user },
-      error: userError
-    } = await sb.auth.getUser();
+    const { data: userData, error: userError } = await sb.auth.getUser();
 
-    if (userError) {
-      throw userError;
+    if (userError) throw userError;
+    if (!userData?.user?.id) {
+      throw new Error("Your login session has expired. Please log in again.");
     }
 
-    if (!user?.id) {
-      throw new Error(
-        "Your login session has expired. Please log in again."
-      );
-    }
-
-    // Check whether this faculty already has
-    // a pending request for this book.
-    const {
-      data: existingRequests,
-      error: existingError
-    } = await sb
+    const { data: existingRequests, error: existingError } = await sb
       .from("book_requests")
-      .select("id, status")
+      .select("id,status")
       .eq("book_id", book.id)
-      .eq("faculty_id", user.id)
+      .eq("faculty_id", userData.user.id)
       .eq("status", "pending")
       .limit(1);
 
-    if (existingError) {
-      throw existingError;
+    if (existingError) throw existingError;
+
+    if (existingRequests?.length) {
+      throw new Error("You already have a pending request for this book.");
     }
 
-    if (existingRequests && existingRequests.length > 0) {
-      throw new Error(
-        "You already have a pending request for this book."
-      );
-    }
-
-    // Create the request
-    const { error } = await sb
+    // Create the request directly in the current `book_requests` table.
+    // This avoids the legacy request_book RPC, which may still reference
+    // the removed `books.available_copies` column.
+    const { error: insertError } = await sb
       .from("book_requests")
       .insert({
-        book_id: book.id,
-        faculty_id: user.id,
-        status: "pending"
+        book_id: Number(book.id),
+        faculty_id: userData.user.id,
+        status: "pending",
+        requested_at: new Date().toISOString()
       });
 
-    if (error) {
-      throw error;
-    }
+    if (insertError) throw insertError;
 
-    alert(
-      "Your book request has been sent successfully."
-    );
-
+    state.pendingRequestBookIds.add(String(book.id));
     closeRequestModal();
+    renderBooks();
 
   } catch (error) {
-    console.error(
-      "MatLib: Request failed:",
-      error
-    );
-
-    showRequestError(
-      error.message ||
-      "Could not send the request."
-    );
-
+    console.error("MatLib: Request failed:", error);
+    showRequestError(error.message || "Could not send the request.");
   } finally {
     elements.sendRequest.disabled = false;
-
-    elements.sendRequest.textContent =
-      "📩 Send Request";
+    elements.sendRequest.textContent = "📩 Send Request";
   }
 }
 
@@ -686,6 +704,11 @@ async function sendBookRequest() {
     }
   );
 
+  elements.categoryFilter?.addEventListener(
+    "change",
+    applyFilters
+  );
+
   elements.availabilityFilter.addEventListener(
     "change",
     applyFilters
@@ -700,6 +723,7 @@ async function sendBookRequest() {
     "click",
     () => {
       elements.searchInput.value = "";
+      if (elements.categoryFilter) elements.categoryFilter.value = "all";
       elements.availabilityFilter.value = "all";
       elements.sortSelect.value = "id-asc";
 
@@ -779,6 +803,6 @@ elements.booksGrid.addEventListener(
 
   /* Start */
 
-  loadBooks();
+  Promise.all([loadCategories(), loadBooks()]);
 
 })();

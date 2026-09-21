@@ -49,6 +49,52 @@
         min-width: 780px;
     }
 }
+
+/* Faculty readability scale + profile + calendar */
+.faculty-dashboard-page { font-size: 104%; }
+.faculty-dashboard-page button,
+.faculty-dashboard-page input,
+.faculty-dashboard-page select,
+.faculty-dashboard-page textarea { font-size: 100%; }
+.faculty-profile-wrap { display:flex; align-items:center; gap:7px; }
+.faculty-profile-edit-btn { width:30px; height:30px; border:1px solid #ead7b8; border-radius:9px; background:#fffdf9; color:#633717; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.faculty-profile-edit-btn:hover { background:#f7ead2; }
+.profile-modal { max-width:460px; }
+.profile-edit-option { width:100%; display:grid; grid-template-columns:42px 1fr auto; align-items:center; gap:12px; margin-top:12px; padding:14px; border:1px solid #ead9bd; border-radius:14px; background:#fffdf9; color:#42230f; text-align:left; cursor:pointer; }
+.profile-edit-option:hover { background:#fbf1df; border-color:#dcb879; }
+.profile-option-icon { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:#f5e7c9; }
+.profile-edit-option strong { display:block; font-size:14px; }
+.profile-edit-option small { display:block; margin-top:3px; color:#8b735f; font-size:12px; }
+.calendar-controls { display:flex; align-items:center; gap:8px; }
+.calendar-controls strong { min-width:150px; text-align:center; }
+.faculty-calendar-card, .calendar-day-panel { background:#fffdf9; border:1px solid #ead9bd; border-radius:18px; box-shadow:0 8px 25px rgba(75,43,18,.06); }
+.faculty-calendar-card { overflow:hidden; }
+.calendar-weekdays, .faculty-calendar-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); }
+.calendar-weekdays { background:#f7ead5; border-bottom:1px solid #ead9bd; }
+.calendar-weekdays span { padding:13px 8px; text-align:center; font-weight:700; color:#755337; }
+.calendar-day { min-height:100px; border-right:1px solid #eee1ce; border-bottom:1px solid #eee1ce; padding:9px; background:#fff; cursor:pointer; position:relative; }
+.calendar-day:nth-child(7n) { border-right:0; }
+.calendar-day.muted { background:#faf7f0; color:#b4a28e; }
+.calendar-day.selected { box-shadow:inset 0 0 0 2px #dcae52; background:#fff8e9; }
+.calendar-day.today .calendar-day-number { background:#dcae52; color:#fff; }
+.calendar-day-number { width:27px; height:27px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; }
+.calendar-event-dots { display:flex; flex-wrap:wrap; gap:4px; margin-top:10px; }
+.calendar-event-dot { width:7px; height:7px; border-radius:50%; background:#8a5b32; }
+.calendar-event-dot.due { background:#b23b2f; }
+.calendar-event-dot.request { background:#d39a2e; }
+.calendar-event-dot.return { background:#5e7f5c; }
+.calendar-day-panel { margin-top:18px; padding:18px; }
+.calendar-day-panel h3 { margin:4px 0 0; }
+.calendar-events-list { display:grid; gap:9px; margin-top:14px; }
+.calendar-event-card { display:flex; gap:12px; align-items:flex-start; padding:12px; border:1px solid #ead9bd; border-radius:12px; background:#fff; }
+.calendar-event-card strong { display:block; }
+.calendar-event-card small { display:block; margin-top:3px; color:#8b735f; }
+.calendar-event-tag { min-width:72px; padding:5px 7px; border-radius:8px; text-align:center; font-size:11px; font-weight:700; background:#f4e8d3; color:#694521; }
+.calendar-event-tag.due { background:#f9e4e1; color:#a03b31; }
+.calendar-event-tag.request { background:#fff0cb; color:#8c641e; }
+.calendar-event-tag.return { background:#e8f1e6; color:#4f6e4d; }
+@media (max-width:700px) { .calendar-controls strong { min-width:110px; } .calendar-day { min-height:72px; padding:6px; } .calendar-weekdays span { font-size:11px; padding:9px 2px; } }
+
 </style>
 
 </head>
@@ -223,6 +269,7 @@
         <button
             class="faculty-nav-item"
             data-section="catalogueSection"
+            type="button"
         >
 
             <span class="nav-icon">
@@ -233,6 +280,19 @@
                 View Catalogue
             </span>
 
+        </button>
+
+
+        <button
+            class="faculty-nav-item"
+            data-section="calendarSection"
+        >
+            <span class="nav-icon">
+                🗓
+            </span>
+            <span>
+                Calendar
+            </span>
         </button>
 
     </nav>
@@ -305,11 +365,25 @@
 
         <div class="faculty-user-area">
 
-            <div
-                class="faculty-avatar"
-                id="facultyAvatar"
-            >
-                F
+            <div class="faculty-profile-wrap">
+                <button
+                    type="button"
+                    class="faculty-avatar"
+                    id="facultyAvatar"
+                    title="Faculty profile"
+                >
+                    F
+                </button>
+
+                <button
+                    type="button"
+                    class="faculty-profile-edit-btn"
+                    id="facultyProfileEditBtn"
+                    title="Edit profile"
+                    aria-label="Edit profile"
+                >
+                    ✎
+                </button>
             </div>
 
             <div class="faculty-user-info">
@@ -425,7 +499,7 @@
                     <div>
 
                         <span>
-                            Total Requests
+                            Current Requests
                         </span>
 
                         <strong id="facultyRequests">
@@ -504,7 +578,8 @@
 
                     <button
                         class="quick-action-card"
-                        data-section-action="catalogueSection"
+                        type="button"
+                        id="facultyQuickCatalogueBtn"
                     >
 
                         <span class="quick-icon">
@@ -1012,6 +1087,57 @@
         </section>
 
 
+        <!-- =================================================
+             CALENDAR
+        ================================================== -->
+        <section
+            id="calendarSection"
+            class="faculty-section"
+        >
+            <div class="page-section-header">
+                <div>
+                    <span class="eyebrow">SCHEDULE</span>
+                    <h2>Calendar</h2>
+                    <p>View your book issues, due dates and requests.</p>
+                </div>
+
+                <div class="calendar-controls">
+                    <button type="button" class="dashboard-btn secondary" id="calendarPrevBtn">←</button>
+                    <strong id="calendarMonthLabel">—</strong>
+                    <button type="button" class="dashboard-btn secondary" id="calendarNextBtn">→</button>
+                    <button type="button" class="dashboard-btn secondary" id="calendarTodayBtn">Today</button>
+                </div>
+            </div>
+
+            <div class="faculty-calendar-card">
+                <div class="calendar-weekdays">
+                    <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span>
+                </div>
+                <div id="facultyCalendarGrid" class="faculty-calendar-grid"></div>
+            </div>
+
+            <div class="faculty-calendar-legend" aria-label="Calendar event colors">
+                <span><i class="legend-dot issue"></i>Issue date</span>
+                <span><i class="legend-dot due"></i>Due date</span>
+                <span><i class="legend-dot return"></i>Return date</span>
+                <span><i class="legend-dot request"></i>Book request</span>
+                <span><i class="legend-dot upload"></i>Document upload</span>
+            </div>
+
+            <div class="calendar-day-panel" id="calendarDayPanel">
+                <div class="calendar-day-panel-head">
+                    <div>
+                        <span class="eyebrow">SELECTED DAY</span>
+                        <h3 id="calendarSelectedDate">Select a date</h3>
+                    </div>
+                </div>
+                <div id="calendarEventsList" class="calendar-events-list">
+                    Select a day to see events.
+                </div>
+            </div>
+        </section>
+
+
         <section
             id="documentsSection"
             class="faculty-section"
@@ -1340,28 +1466,14 @@
             </div>
 
 
-            <div class="catalogue-card">
-
-                <div class="catalogue-icon">
-                    📚
-                </div>
-
-                <h3>
-                    Search MatLib Books
-                </h3>
-
-                <p>
-                    Find books by title, author,
-                    accession number or category.
-                </p>
-
-                <a
-                    href="books.html"
-                    class="dashboard-btn primary"
-                >
-                    Browse Books →
-                </a>
-
+            <div class="catalogue-embedded-shell">
+                <iframe
+                    id="facultyCatalogueFrame"
+                    class="faculty-catalogue-frame"
+                    src="books.html?embedded=1"
+                    title="MatLib Library Catalogue"
+                    loading="lazy"
+                ></iframe>
             </div>
 
         </section>
@@ -1371,6 +1483,51 @@
 
 </main>
 
+
+
+<!-- =========================================================
+     FACULTY PROFILE MODAL
+========================================================= -->
+<div id="facultyProfileModal" class="faculty-modal hidden">
+    <div class="faculty-modal-box profile-modal">
+        <button type="button" class="modal-close" id="closeFacultyProfileModal">×</button>
+        <span class="modal-icon">✎</span>
+        <h2>Edit Profile</h2>
+        <p>Update your faculty account details.</p>
+
+        <button type="button" class="profile-edit-option" id="changeFacultyNameBtn">
+            <span class="profile-option-icon">👤</span>
+            <span><strong>Change Name</strong><small>Update your faculty name</small></span>
+            <span>→</span>
+        </button>
+
+        <button type="button" class="profile-edit-option" id="changeFacultyDesignationBtn">
+            <span class="profile-option-icon">💼</span>
+            <span><strong>Change Designation</strong><small>Update your designation</small></span>
+            <span>→</span>
+        </button>
+
+        <button type="button" class="profile-edit-option" id="changeFacultyPasswordBtn">
+            <span class="profile-option-icon">🔐</span>
+            <span><strong>Change Password</strong><small>Update your account password</small></span>
+            <span>→</span>
+        </button>
+
+        <button type="button" class="profile-edit-option" id="changeFacultyEmailBtn">
+            <span class="profile-option-icon">✉</span>
+            <span><strong>Change Email</strong><small>Update your registered email</small></span>
+            <span>→</span>
+        </button>
+
+        <button type="button" class="profile-edit-option" id="changeFacultyMobileBtn">
+            <span class="profile-option-icon">📱</span>
+            <span><strong>Change Mobile No.</strong><small>Update your mobile number</small></span>
+            <span>→</span>
+        </button>
+
+        <div id="facultyProfileMessage" class="modal-message"></div>
+    </div>
+</div>
 
 
 <!-- =========================================================

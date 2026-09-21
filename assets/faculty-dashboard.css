@@ -3152,238 +3152,442 @@ td small {
 
 }
 
-/* MatLib book view tabs */
-.book-view-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
-.book-view-tab{border:1px solid #d8b982;background:#fff8ed;color:#6b3f1e;border-radius:999px;padding:9px 15px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:.2s}
-.book-view-tab.active{background:#6b3f1e;color:#fff8ed;box-shadow:inset 0 2px 0 rgba(255,255,255,.12),0 4px 0 #3d2415}
-.book-history-card[hidden]{display:none!important}
-.status-approved,.status-issued{background:#dcefd8!important;color:#276b36!important;border-color:#b7d9ae!important}
-.status-pending{background:#f6e6bf!important;color:#80531e!important;border-color:#e5c98f!important}
-
-
-/* ============================================================
-   FACULTY DASHBOARD FINAL GOLD / BROWN OVERRIDES
-============================================================ */
-
-:root {
-    --matlib-gold: #c89b3c;
-    --matlib-dark-gold: #9b7027;
-    --matlib-brown: #5a351f;
-    --matlib-deep-brown: #3e2415;
-    --matlib-cream: #fffaf1;
-    --matlib-border: #e3cda9;
+/* Faculty document ownership identity */
+.root-folder-chip.owned-by-me {
+    background: linear-gradient(135deg, #f5e2b8, #fffaf0);
+    border-color: #c8943e;
+    box-shadow: 0 8px 24px rgba(93, 59, 25, .10);
 }
 
-.faculty-dashboard,
-.dashboard-main,
-main {
-    color: var(--matlib-brown);
+.document-row.owned-by-me,
+.document-card.owned-by-me,
+.folder-card.owned-by-me {
+    background: linear-gradient(90deg, #fff8e8, #ffffff);
+    border-left: 4px solid #c8943e;
 }
 
-.status-pill,
-.status-badge {
+.drive-owner-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 7px;
+    padding: 3px 7px;
     border-radius: 999px;
-    font-weight: 700;
+    background: #f1dfb8;
+    color: #69451f;
+    font-size: 9px;
+    font-style: normal;
+    font-weight: 800;
+    white-space: nowrap;
 }
 
-.status-pill.success,
-.status-badge.success,
-.status-badge.approved {
-    color: #236b31 !important;
-    background: #dff1d8 !important;
-    border: 1px solid #b9dcae !important;
-}
-
-.status-pill.danger,
-.status-badge.danger,
-.status-badge.rejected {
-    color: #a92d25 !important;
-    background: #f8d9d5 !important;
-    border: 1px solid #edaaa2 !important;
-}
-
-.status-badge.pending {
-    color: #8b5c16 !important;
-    background: #f8e8bd !important;
-    border: 1px solid #e5c982 !important;
-}
-
-.faculty-table-btn,
-.return-book-button,
-button[data-request-return] {
-    background: var(--matlib-brown) !important;
-    color: #fff8e9 !important;
-    border: 1px solid var(--matlib-deep-brown) !important;
-}
-
-.faculty-table-btn:hover,
-.return-book-button:hover,
-button[data-request-return]:hover {
-    background: var(--matlib-dark-gold) !important;
-}
-
-.empty-table,
-.empty-cell,
-.table-loading {
-    color: #8c6a4c;
-    text-align: center;
-    padding: 28px !important;
-}
-
-[hidden] {
-    display: none !important;
-}
-
-/* A return request has already been sent and is waiting for Admin. */
-.faculty-table-btn.return-requested-btn,
-.faculty-table-btn.return-requested-btn:disabled {
-    background: #ece2d3 !important;
-    color: #7b644d !important;
-    border: 1px solid #d7c4a9 !important;
-    cursor: not-allowed !important;
-    opacity: 1 !important;
-    box-shadow: none !important;
-}
-
-.faculty-table-btn.return-requested-btn:hover,
-.faculty-table-btn.return-requested-btn:disabled:hover {
-    background: #ece2d3 !important;
-    color: #7b644d !important;
-    border-color: #d7c4a9 !important;
-}
-
-
-/* ============================================================
-   MATLIB GOLD / BROWN + TABLE SEARCH
-============================================================ */
-:root {
-    --matlib-gold: #c89b3c;
-    --matlib-gold-light: #e7c978;
-    --matlib-brown: #5a351f;
-    --matlib-deep-brown: #3e2415;
-    --matlib-cream: #fffaf1;
-    --matlib-border: #e3cda9;
-}
-
-.faculty-dashboard-page {
-    background: var(--matlib-cream) !important;
-}
-
-.faculty-sidebar {
-    background: linear-gradient(180deg, var(--matlib-deep-brown), var(--matlib-brown)) !important;
-    border-right: 1px solid rgba(200,155,60,.45) !important;
-}
-
-.faculty-brand-mark,
-.faculty-brand strong,
-.eyebrow,
-.section-heading > span {
-    color: var(--matlib-gold) !important;
-}
-
-.faculty-nav-item,
-.faculty-nav-link {
-    color: #fff8e9 !important;
-}
-
-.faculty-nav-item:hover,
-.faculty-nav-link:hover,
-.faculty-nav-item.active {
-    background: rgba(200,155,60,.18) !important;
-    color: #fff !important;
-    border-color: rgba(200,155,60,.5) !important;
-}
-
-.faculty-nav-link {
-    text-decoration: none;
+.faculty-drive-details-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
     display: flex;
     align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(52, 38, 25, .38);
+    backdrop-filter: blur(8px);
 }
 
-.dashboard-btn.primary,
-.faculty-table-btn,
-.document-upload-btn {
-    background: var(--matlib-brown) !important;
-    border-color: var(--matlib-brown) !important;
-    color: #fff !important;
+.faculty-drive-details-modal {
+    position: relative;
+    width: min(520px, 100%);
+    padding: 28px;
+    border: 1px solid #e5d5bf;
+    border-radius: 24px;
+    background: #fffdf9;
+    box-shadow: 0 30px 90px rgba(55, 38, 22, .24);
 }
 
-.dashboard-btn.primary:hover,
-.faculty-table-btn:hover,
-.document-upload-btn:hover {
-    background: var(--matlib-deep-brown) !important;
-    border-color: var(--matlib-deep-brown) !important;
-}
-
-.dashboard-btn.secondary {
-    color: var(--matlib-brown) !important;
-    border-color: var(--matlib-gold) !important;
-    background: #fffdf8 !important;
-}
-
-.faculty-table-card,
-.catalogue-card,
-.faculty-stat-card,
-.quick-action-card {
-    border-color: var(--matlib-border) !important;
-}
-
-.faculty-table-card th {
-    background: #f4ead8 !important;
-    color: var(--matlib-brown) !important;
-}
-
-.faculty-table-card tr:hover td {
-    background: #fffaf0 !important;
-}
-
-.matlib-table-search {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    box-sizing: border-box;
-    margin: 0 0 14px;
-    padding: 10px 12px;
-    background: #fffdf8;
-    border: 1px solid var(--matlib-border);
-    border-radius: 12px;
-    box-shadow: 0 4px 14px rgba(90,53,31,.07);
-}
-
-.matlib-search-icon {
-    color: var(--matlib-brown);
-    font-size: 22px;
-    line-height: 1;
-}
-
-.matlib-table-search input {
-    flex: 1;
-    min-width: 0;
+.drive-details-close {
+    position: absolute;
+    top: 13px;
+    right: 15px;
+    width: 34px;
+    height: 34px;
     border: 0;
-    outline: 0;
-    background: transparent;
-    color: var(--matlib-deep-brown);
-    font: inherit;
-}
-
-.matlib-table-search input::placeholder {
-    color: #9a8267;
-}
-
-.matlib-search-clear {
-    border: 0;
-    background: transparent;
-    color: var(--matlib-brown);
+    border-radius: 50%;
+    background: #f3e8d9;
+    color: #684522;
     font-size: 22px;
     cursor: pointer;
-    padding: 2px 6px;
 }
 
-.matlib-search-clear:hover {
-    color: var(--matlib-gold);
+.drive-details-icon {
+    width: 58px;
+    height: 58px;
+    display: grid;
+    place-items: center;
+    margin-bottom: 14px;
+    border-radius: 16px;
+    background: #f5e4c3;
+    font-size: 27px;
 }
 
-[hidden] { display: none !important; }
+.drive-details-eyebrow {
+    color: #9a6e31;
+    font-size: 10px;
+    font-weight: 850;
+    letter-spacing: 1.2px;
+}
 
-.status-requested{background:#ece2d3!important;color:#7b644d!important;border:1px solid #d7c4a9!important}
+.faculty-drive-details-modal h2 {
+    margin: 7px 42px 22px 0;
+    color: #35291f;
+    font-size: 22px;
+    overflow-wrap: anywhere;
+}
+
+.drive-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.drive-details-grid > div {
+    padding: 13px;
+    border: 1px solid #eee2d4;
+    border-radius: 14px;
+    background: #faf6ef;
+}
+
+.drive-details-grid small {
+    display: block;
+    margin-bottom: 5px;
+    color: #968777;
+    font-size: 10px;
+    font-weight: 750;
+}
+
+.drive-details-grid strong {
+    display: block;
+    color: #49372a;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+}
+
+.drive-details-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+    margin-top: 20px;
+}
+
+@media (max-width: 760px) {
+    .document-list-head {
+        display: none;
+    }
+
+    .document-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        padding: 13px;
+    }
+
+    .document-row .document-cell {
+        display: none;
+    }
+
+    .document-name-text strong {
+        max-width: 52vw;
+        display: block;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .document-row-actions {
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+
+    .document-small-btn {
+        min-width: 34px;
+        min-height: 34px;
+    }
+
+    .drive-owner-badge {
+        margin-left: 0;
+        margin-top: 4px;
+    }
+
+    .drive-details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .faculty-drive-details-modal {
+        padding: 22px;
+        border-radius: 20px;
+    }
+
+    .drive-details-actions {
+        flex-direction: column-reverse;
+    }
+
+    .drive-details-actions .dashboard-btn {
+        width: 100%;
+    }
+
+    .document-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+
+/* ============================================================
+   FACULTY CALENDAR
+============================================================ */
+
+.faculty-calendar-card {
+    background: rgba(255,253,249,.96);
+    border: 1px solid var(--faculty-border);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0 18px 50px rgba(67,42,20,.08);
+}
+
+.faculty-calendar-toolbar {
+    display: grid;
+    grid-template-columns: 44px 76px 1fr 44px;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.faculty-calendar-toolbar h3 {
+    margin: 0;
+    text-align: center;
+    font-size: 23px;
+    color: var(--faculty-text);
+}
+
+.calendar-nav-btn,
+.calendar-today-btn {
+    border: 1px solid var(--faculty-border);
+    background: #fff;
+    color: var(--faculty-text);
+    border-radius: 11px;
+    min-height: 40px;
+    cursor: pointer;
+    font-weight: 800;
+}
+
+.calendar-nav-btn { font-size: 24px; }
+.calendar-nav-btn:hover,
+.calendar-today-btn:hover { border-color: var(--faculty-gold); background: #fff8ec; }
+
+.faculty-calendar-weekdays,
+.faculty-calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.faculty-calendar-weekdays {
+    margin-bottom: 7px;
+}
+
+.faculty-calendar-weekdays span {
+    text-align: center;
+    color: var(--faculty-muted);
+    font-size: 11px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 8px 0;
+}
+
+.faculty-calendar-grid {
+    border-top: 1px solid var(--faculty-border);
+    border-left: 1px solid var(--faculty-border);
+}
+
+.faculty-calendar-day {
+    min-height: 92px;
+    border: 0;
+    border-right: 1px solid var(--faculty-border);
+    border-bottom: 1px solid var(--faculty-border);
+    background: #fffdf9;
+    padding: 10px;
+    text-align: left;
+    position: relative;
+    cursor: pointer;
+}
+
+.faculty-calendar-day:hover { background: #fff8ec; }
+.faculty-calendar-day.muted { background: #faf6ef; color: #b7aa9b; }
+.faculty-calendar-day.today .calendar-day-number { box-shadow: 0 0 0 2px var(--faculty-gold); }
+.faculty-calendar-day.selected { background: #f8eddc; }
+
+.calendar-day-number {
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 12px;
+    font-weight: 850;
+}
+
+.calendar-event-dots { display:flex; gap:4px; margin-top:12px; }
+.calendar-event-dot { width:7px; height:7px; border-radius:50%; display:block; }
+.calendar-event-dot.issue, .legend-dot.issue { background:#6d9a72; }
+.calendar-event-dot.due, .legend-dot.due { background:#b84c43; }
+.calendar-event-dot.return, .legend-dot.return { background:#7c6b9e; }
+.calendar-event-dot.request, .legend-dot.request { background:#c28c3c; }
+.calendar-day-count { position:absolute; right:8px; bottom:8px; font-size:10px; color:var(--faculty-muted); font-weight:800; }
+
+.faculty-calendar-legend {
+    display:flex;
+    flex-wrap:wrap;
+    gap:18px;
+    margin:17px 0 24px;
+    color:var(--faculty-muted);
+    font-size:12px;
+    font-weight:700;
+}
+
+.faculty-calendar-legend span { display:flex; align-items:center; gap:7px; }
+.legend-dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+
+.faculty-calendar-day-panel {
+    border-top:1px solid var(--faculty-border);
+    padding-top:22px;
+}
+
+.calendar-day-heading {
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:15px;
+    margin-bottom:15px;
+}
+
+.calendar-day-heading h3 { margin:4px 0 0; font-size:20px; }
+.calendar-event-count { padding:7px 11px; border-radius:999px; background:#f3eadc; color:#795633; font-size:11px; font-weight:800; }
+
+.faculty-calendar-events { display:flex; flex-direction:column; gap:10px; }
+.faculty-calendar-event { display:flex; gap:13px; padding:14px; border:1px solid var(--faculty-border); border-radius:14px; background:#fffaf3; }
+.faculty-calendar-event-icon { width:38px; height:38px; flex:0 0 38px; border-radius:11px; display:flex; align-items:center; justify-content:center; background:#f1e3cc; }
+.faculty-calendar-event-content { display:flex; flex-direction:column; gap:3px; }
+.faculty-calendar-event-content strong { font-size:13px; }
+.faculty-calendar-event-content span { font-size:12px; color:var(--faculty-text); }
+.faculty-calendar-event-content small { font-size:10px; color:var(--faculty-muted); }
+.faculty-calendar-event.due { border-color:#ead0cb; background:#fff8f7; }
+.faculty-calendar-event.return { background:#faf8ff; }
+.faculty-calendar-event.request { background:#fffaf0; }
+.calendar-empty, .calendar-loading { padding:25px; text-align:center; color:var(--faculty-muted); border:1px dashed var(--faculty-border); border-radius:14px; }
+.calendar-error { color:var(--faculty-red); }
+
+@media (max-width: 760px) {
+    .faculty-calendar-card { padding:14px; }
+    .faculty-calendar-toolbar { grid-template-columns:40px 68px 1fr 40px; }
+    .faculty-calendar-toolbar h3 { font-size:18px; }
+    .faculty-calendar-day { min-height:70px; padding:7px; }
+    .calendar-day-number { width:25px; height:25px; }
+    .calendar-event-dots { margin-top:7px; }
+    .faculty-calendar-weekdays span { font-size:9px; }
+}
+
+/* ============================================================
+   FACULTY UPDATES - SEARCH / PAGINATION / DRIVE OWNERSHIP
+============================================================ */
+.faculty-table-tools{display:flex;justify-content:flex-end;align-items:center;margin:0 0 12px}
+.faculty-table-search{width:min(420px,100%);min-height:44px;display:flex;align-items:center;gap:9px;padding:0 12px;border:1px solid var(--faculty-border);border-radius:12px;background:#fffdf9;color:var(--faculty-muted);box-shadow:0 6px 18px rgba(67,42,20,.04)}
+.faculty-table-search input{width:100%;border:0;outline:0;background:transparent;color:var(--faculty-text);font-size:12px}
+.faculty-table-search input::placeholder{color:#9c8d7d}
+.faculty-pagination{display:flex;justify-content:center;gap:6px;margin:14px 0 4px;flex-wrap:wrap}
+.faculty-pagination-btn{min-width:34px;height:34px;padding:0 9px;border:1px solid var(--faculty-border);border-radius:9px;background:#fffdf9;color:var(--faculty-text);font-weight:800;cursor:pointer}
+.faculty-pagination-btn:hover:not(:disabled){border-color:var(--faculty-gold);background:#fff8ec}
+.faculty-pagination-btn.active{background:var(--faculty-brown);border-color:var(--faculty-brown);color:#fff}
+.faculty-pagination-btn:disabled{opacity:.42;cursor:not-allowed}
+
+.root-folder-item{display:flex;align-items:stretch;gap:5px;flex:0 0 auto}
+.root-folder-item .root-folder-chip{flex:1}
+.drive-root-details{width:36px;border:1px solid var(--faculty-border);border-radius:10px;background:#fffdf9;color:#70553b;font-weight:900;cursor:pointer}
+.drive-root-details:hover{border-color:var(--faculty-gold);background:#fff8ec}
+.root-folder-item.owned-by-me .root-folder-chip,
+.root-folder-chip.owned-by-me{background:#eaf6ff;border-color:#9bcbe9;box-shadow:0 8px 24px rgba(47,128,184,.10)}
+.document-row.owned-by-me,
+.folder-card.owned-by-me{background:#eef8ff;border-left:4px solid #72b8e2}
+.root-folder-item.owned-by-me .drive-root-details{background:#eef8ff;border-color:#9bcbe9;color:#2f6f97}
+.folder-card-actions{display:flex;justify-content:center;gap:5px;margin-top:7px}
+
+/* Calendar event colours */
+.calendar-event-dot.upload,.legend-dot.upload{background:#3c86b7}
+.faculty-calendar-event.upload{background:#f0f8ff;border-color:#b9dced}
+.faculty-calendar-event.issue{background:#f2faf3;border-color:#c9dfcc}
+.faculty-calendar-event.due{background:#fff8f7;border-color:#ead0cb}
+.faculty-calendar-event.return{background:#faf8ff;border-color:#ddd4ee}
+.faculty-calendar-event.request{background:#fffaf0;border-color:#ead8b7}
+
+/* ============================================================
+   EMBEDDED FACULTY CATALOGUE
+============================================================ */
+.faculty-catalogue-page{width:100%}
+.catalogue-embedded-header{min-height:145px;padding:28px 32px;border:1px solid rgba(203,166,105,.28);border-radius:24px;background:linear-gradient(115deg,rgba(255,255,255,.97),rgba(246,231,205,.95));box-shadow:0 18px 48px rgba(67,42,20,.07);display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:18px}
+.catalogue-embedded-header h2{margin:0;color:var(--faculty-text);font-size:34px;letter-spacing:-1px}
+.catalogue-embedded-header p{margin:7px 0 0;color:var(--faculty-muted);font-size:13px}
+.live-status{display:flex;align-items:center;gap:8px;color:#3f7b52;font-size:12px;font-weight:850}
+.live-status>span{width:8px;height:8px;border-radius:50%;background:#79c589;box-shadow:0 0 0 5px rgba(121,197,137,.12)}
+.catalogue-embedded-filters{display:grid;grid-template-columns:minmax(280px,1fr) 180px 160px 170px 125px;gap:10px;padding:18px;border:1px solid var(--faculty-border);border-radius:18px;background:#fffdf9;box-shadow:0 10px 28px rgba(67,42,20,.05);margin-bottom:18px}
+.catalogue-embedded-search{min-height:44px;border:1px solid #d9c8af;border-radius:11px;background:#fff;display:flex;align-items:center;gap:8px;padding:0 10px;color:#8d7965}
+.catalogue-embedded-search input{width:100%;border:0;outline:0;background:transparent;color:var(--faculty-text);font-size:12px}
+.catalogue-embedded-search button{width:25px;height:25px;border:0;border-radius:50%;background:#eee5d8;color:#654b35;display:flex;align-items:center;justify-content:center;font-size:16px}
+.catalogue-embedded-filters select,.catalogue-filter-clear{min-height:44px;border:1px solid #d9c8af;border-radius:11px;background:#fff;color:var(--faculty-text);padding:0 11px;font-size:11px;font-weight:750}
+.catalogue-filter-clear:hover{border-color:#bc8a43;background:#fff9ef}
+.catalogue-embedded-heading{display:flex;align-items:flex-end;justify-content:space-between;margin:0 0 13px}
+.catalogue-embedded-heading h3{margin:0;font-size:22px;color:var(--faculty-text)}
+.catalogue-embedded-heading p{margin:4px 0 0;color:var(--faculty-muted);font-size:11px}
+.catalogue-embedded-heading>span{padding:7px 10px;border-radius:999px;background:#f4ecdf;color:#72563b;font-size:10px;font-weight:800}
+.catalogue-books-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:15px}
+.catalogue-book-card{border:1px solid var(--faculty-border);border-radius:18px;background:#fffdf9;box-shadow:0 10px 30px rgba(67,42,20,.06);overflow:hidden;transition:.2s ease}
+.catalogue-book-card:hover{transform:translateY(-3px);box-shadow:0 16px 36px rgba(67,42,20,.10)}
+.catalogue-book-top{padding:12px 13px 0;display:flex;justify-content:space-between;align-items:center}
+.catalogue-book-number{width:28px;height:28px;border-radius:8px;background:#f3eadc;display:flex;align-items:center;justify-content:center;color:#684628;font-size:10px;font-weight:850}
+.catalogue-book-status{padding:6px 9px;border-radius:999px;font-size:9px;font-weight:900}
+.catalogue-book-status.available{background:#e7f2e9;color:#3f7b52}.catalogue-book-status.issued{background:#f7e8e5;color:#ad443d}
+.catalogue-book-cover{height:170px;margin:13px 14px 0;border-radius:13px;background:linear-gradient(135deg,#633717,#8c5426 55%,#4b2916);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;box-shadow:0 10px 20px rgba(63,36,17,.15)}
+.catalogue-book-cover:before{content:"";position:absolute;left:0;top:0;bottom:0;width:13px;background:rgba(0,0,0,.18)}
+.catalogue-book-cover-inner{width:77%;height:82%;border:1px solid rgba(242,214,154,.5);border-radius:7px;padding:15px 12px;color:#fff;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center}
+.catalogue-book-cover-brand{font-size:8px;letter-spacing:1.7px;font-weight:900;color:#f2d69a}.catalogue-book-cover-title{margin:10px 0 5px;font-size:15px;line-height:1.2;font-weight:850}.catalogue-book-cover-author{margin:0;font-size:9px;color:#f4dfbd}
+.catalogue-book-info{padding:14px}.catalogue-book-title{margin:0;font-size:14px;line-height:1.35}.catalogue-book-author{margin:4px 0 11px;color:#907d69;font-size:10px}.catalogue-book-details{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:11px}.catalogue-book-detail{padding:8px;border-radius:9px;background:#f4ecdf}.catalogue-book-detail span{display:block;font-size:7px;font-weight:900;letter-spacing:.7px;text-transform:uppercase;color:#917f6c}.catalogue-book-detail strong{display:block;margin-top:2px;font-size:10px;color:#44362a;word-break:break-word}
+.catalogue-book-request{width:100%;border:0;border-radius:9px;padding:10px;background:var(--faculty-gold);color:#281b0e;font-weight:850;font-size:10px}.catalogue-book-request:hover{background:#d1a143}.catalogue-book-request.disabled{background:#eee7de;color:#756655;cursor:not-allowed}
+.catalogue-loading-state,.catalogue-empty-state{padding:45px 20px;text-align:center;color:var(--faculty-muted)}.catalogue-empty-state{border:1px dashed #d7c5aa;border-radius:18px;background:#fffdf9}.catalogue-empty-state>div{font-size:34px}.catalogue-empty-state h3{margin:5px 0}.catalogue-empty-state p{margin:0}
+.catalogue-pagination{display:flex;justify-content:center;gap:6px;margin-top:20px;flex-wrap:wrap}.catalogue-page-button{min-width:34px;height:34px;border:1px solid var(--faculty-border);border-radius:9px;background:#fff;color:#5f4c3b;font-weight:800}.catalogue-page-button.active{background:var(--faculty-brown);color:#fff;border-color:var(--faculty-brown)}.catalogue-page-button:disabled{opacity:.45}
+.catalogue-request-overlay{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(29,21,14,.58);backdrop-filter:blur(8px)}
+.catalogue-request-modal{width:min(500px,100%);padding:28px;border-radius:22px;background:#fffdf9;box-shadow:0 30px 90px rgba(0,0,0,.25);position:relative}.catalogue-request-close{position:absolute;right:15px;top:15px;width:34px;height:34px;border:0;border-radius:50%;background:#f0e8dc;color:#584535;font-size:22px}.catalogue-request-icon{width:54px;height:54px;border-radius:15px;display:flex;align-items:center;justify-content:center;background:#f1e2c4;font-size:24px;margin-bottom:14px}.catalogue-request-modal h2{margin:7px 0 5px;font-size:24px}.catalogue-request-modal h3{margin:0;color:#6e5137;font-size:14px}.catalogue-request-modal>p{color:#766858;font-size:12px;line-height:1.5}.catalogue-request-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}.catalogue-cancel-btn,.catalogue-send-btn{min-height:43px;border:0;border-radius:10px;font-weight:800}.catalogue-cancel-btn{background:#eee7de;color:#5c4d3e}.catalogue-send-btn{background:var(--faculty-gold);color:#281b0e}
+
+@media(max-width:1180px){.catalogue-embedded-filters{grid-template-columns:1fr 1fr}.catalogue-embedded-search{grid-column:1/-1}.catalogue-books-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:760px){.catalogue-embedded-header{display:block;padding:24px}.catalogue-embedded-header h2{font-size:29px}.catalogue-embedded-filters{grid-template-columns:1fr}.catalogue-embedded-search{grid-column:auto}.catalogue-books-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.faculty-table-tools{justify-content:stretch}.faculty-table-search{width:100%}.catalogue-request-actions{grid-template-columns:1fr}}
+@media(max-width:520px){.catalogue-books-grid{grid-template-columns:1fr}.catalogue-book-cover{height:205px}.catalogue-embedded-heading{align-items:flex-start;gap:10px;flex-direction:column}}
+
+/* books.js class names inside embedded catalogue */
+.faculty-catalogue-page .book-card{border:1px solid var(--faculty-border);border-radius:18px;background:#fffdf9;box-shadow:0 10px 30px rgba(67,42,20,.06);overflow:hidden;transition:.2s ease;position:relative}
+.faculty-catalogue-page .book-card:hover{transform:translateY(-3px);box-shadow:0 16px 36px rgba(67,42,20,.10)}
+.faculty-catalogue-page .book-card-top{padding:12px 13px 0;display:flex;justify-content:space-between;align-items:center}
+.faculty-catalogue-page .book-number{width:28px;height:28px;border-radius:8px;background:#f3eadc;display:flex;align-items:center;justify-content:center;color:#684628;font-size:10px;font-weight:850}
+.faculty-catalogue-page .book-status{padding:6px 9px;border-radius:999px;font-size:9px;font-weight:900}.faculty-catalogue-page .status-available{background:#e7f2e9;color:#3f7b52}.faculty-catalogue-page .status-issued{background:#f7e8e5;color:#ad443d}
+.faculty-catalogue-page .book-cover-3d{height:170px;margin:13px 14px 0;border-radius:13px;background:linear-gradient(135deg,#633717,#8c5426 55%,#4b2916);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;box-shadow:0 10px 20px rgba(63,36,17,.15)}
+.faculty-catalogue-page .book-cover-spine{position:absolute;left:0;top:0;bottom:0;width:13px;background:rgba(0,0,0,.18)}
+.faculty-catalogue-page .book-cover-front{width:77%;height:82%;border:1px solid rgba(242,214,154,.5);border-radius:7px;padding:15px 12px;color:#fff;text-align:center;display:flex;flex-direction:column;justify-content:center;align-items:center}.faculty-catalogue-page .book-cover-brand{font-size:8px;letter-spacing:1.7px;font-weight:900;color:#f2d69a}.faculty-catalogue-page .book-cover-title{margin:10px 0 5px;font-size:15px;line-height:1.2;font-weight:850}.faculty-catalogue-page .book-cover-author{margin:0;font-size:9px;color:#f4dfbd}.faculty-catalogue-page .book-cover-line{width:35px;height:1px;background:#dfb353;margin:9px 0}.faculty-catalogue-page .book-cover-label{font-size:7px;letter-spacing:1px;color:#e7d2ac;font-weight:800}.faculty-catalogue-page .book-cover-pages{display:none}
+.faculty-catalogue-page .book-info{padding:14px}.faculty-catalogue-page .book-title{margin:0;font-size:14px;line-height:1.35}.faculty-catalogue-page .book-author{margin:4px 0 11px;color:#907d69;font-size:10px}.faculty-catalogue-page .book-details{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:11px}.faculty-catalogue-page .detail-row{padding:8px;border-radius:9px;background:#f4ecdf}.faculty-catalogue-page .detail-row span{display:block;font-size:7px;font-weight:900;letter-spacing:.7px;text-transform:uppercase;color:#917f6c}.faculty-catalogue-page .detail-row strong{display:block;margin-top:2px;font-size:10px;color:#44362a;word-break:break-word}
+.faculty-catalogue-page .request-book-btn{width:100%;border:0;border-radius:9px;padding:10px;background:var(--faculty-gold);color:#281b0e;font-weight:850;font-size:10px}.faculty-catalogue-page .request-book-btn:hover{background:#d1a143}.faculty-catalogue-page .request-book-btn.request-disabled{background:#eee7de;color:#756655;cursor:not-allowed}
+.faculty-catalogue-page .page-button{min-width:34px;height:34px;padding:0 9px;border:1px solid var(--faculty-border);border-radius:9px;background:#fff;color:#5f4c3b;font-weight:800}.faculty-catalogue-page .page-button.active{background:var(--faculty-brown);color:#fff;border-color:var(--faculty-brown)}.faculty-catalogue-page .page-button:disabled{opacity:.45}
+
+/* Embedded faculty catalogue */
+.catalogue-embedded-shell{width:100%;overflow:hidden;border:1px solid #ead9bd;border-radius:18px;background:#fffdf9;box-shadow:0 8px 25px rgba(75,43,18,.06)}
+.faculty-catalogue-frame{display:block;width:100%;height:calc(100vh - 190px);min-height:900px;border:0;background:transparent}
+@media(max-width:900px){.faculty-catalogue-frame{height:1100px;min-height:1100px}}
+
+/* Profile editor */
+.profile-form-label{display:block;margin-top:14px;color:#654b35;font-size:12px;font-weight:800}
+.profile-form-label input{display:block;width:100%;margin-top:7px;min-height:44px;padding:0 12px;border:1px solid #d9c8af;border-radius:11px;background:#fffdf9;color:#30251c;outline:none;font-size:13px}
+.profile-form-label input:focus{border-color:#c59a4d;box-shadow:0 0 0 3px rgba(223,179,83,.15)}
+.profile-form-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+.profile-form-actions .cancel-button,.profile-form-actions .send-button{min-height:44px;border:0;border-radius:10px;font-weight:800}
+.modal-message.success{color:#3f7b52;background:#e7f2e9;border:1px solid #cfe4d3;padding:9px 11px;border-radius:10px;margin-top:12px}
+.modal-message.error{color:#ad443d;background:#f7e8e5;border:1px solid #efd0cb;padding:9px 11px;border-radius:10px;margin-top:12px}

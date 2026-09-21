@@ -13,13 +13,13 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-<script src="assets/config.js"></script>
+<script src="assets/config.js?v=20260921"></script>
 </head>
 <body>
 <div class="app-shell">
 <aside id="sidebar" class="sidebar">
   <div class="brand"><span class="brand-mark">√x</span><strong>MatLib</strong></div>
-  <div class="admin-card"><div id="avatar" class="avatar">A</div><div><strong id="adminName">Administrator</strong><small>Library Admin</small></div></div>
+  <button type="button" id="sidebarAdminProfile" class="admin-card admin-card-button"><div id="avatar" class="avatar">A</div><div><strong id="adminName">Administrator</strong><small>Library Admin</small></div></button>
   <nav id="nav" class="nav">
     <div class="nav-label">MAIN</div>
     <button class="nav-item active" data-section="dashboard">⌂ <span>Dashboard</span></button>
@@ -53,18 +53,22 @@
     <button class="nav-item" data-section="studentDocuments">⇧ <span>Document Send History</span></button>
     <div class="nav-label">CATEGORIES</div>
     <button class="nav-item" data-section="categories">◈ <span>Manage Categories</span></button>
-    <button class="nav-item" data-section="categoryBrowse">⌕ <span>Browse by Category</span></button>
+    <button class="nav-item" data-section="categoryBrowse">⌕ <span>Audit</span></button>
     <div class="nav-label">PRIMARY</div>
-    <button class="nav-item" data-section="overdue">⚠ <span>Overdue Books</span></button>
+    <button class="nav-item" data-section="overdue">⚠ <span>Overdue Books</span><b id="overdueCount" class="nav-count alert">0</b></button>
     <button class="nav-item" data-section="borrowing">▦ <span>Borrowing History</span></button>
     <button class="nav-item" data-section="analytics">◒ <span>Analytics</span></button>
     <button class="nav-item" data-section="calendar">▦ <span>Calendar</span></button>
   </nav>
-  <div class="sidebar-bottom"><a href="admin-books.html">▥ View Catalogue</a><button id="logout">↪ Logout</button></div>
+  <div class="sidebar-bottom"><button id="logout">↪ Logout</button></div>
 </aside>
 
 <main class="main">
-<header class="topbar"><div class="top-left"><button id="menu" class="icon-btn mobile-only">☰</button><div><div class="top-kicker">MATLIB ADMIN</div><h1 id="pageTitle">Dashboard</h1></div></div><div class="top-right"><span id="systemStatus" class="status-pill">Checking…</span><button id="refreshAll" class="icon-btn" title="Refresh">↻</button></div></header>
+<header class="topbar"><div class="top-left"><button id="menu" class="icon-btn mobile-only">☰</button><div><div class="top-kicker">MATLIB ADMIN</div><h1 id="pageTitle">Dashboard</h1></div></div><div class="top-right">
+  <button id="openAdminProfile" class="header-profile" type="button" title="Edit admin profile"><span id="headerAvatar" class="header-avatar">A</span><span class="profile-pencil">✎</span></button>
+  <div class="notification-wrap"><button id="notificationBtn" class="icon-btn notification-btn" type="button" title="Notifications">🔔<b id="notificationCount" class="notification-count hidden">0</b></button><div id="notificationPanel" class="notification-panel hidden"><div class="notification-head"><strong>Notifications</strong><button id="closeNotifications" type="button" aria-label="Close">×</button></div><div id="notificationBody" class="notification-body"></div></div></div>
+  <span id="systemStatus" class="status-pill">Checking…</span><button id="refreshAll" class="icon-btn" title="Refresh">↻</button>
+</div></header>
 <div id="message" class="message"></div>
 <div class="page-content">
 
@@ -103,12 +107,12 @@
 
 <section id="deleteBorrowHistory" class="dashboard-section">
   <div class="section-head"><div><span class="eyebrow">DELETE</span><h2>Delete Borrowed History</h2><p>Permanently delete past borrowing records. Currently issued books are protected.</p></div></div>
-  <div class="panel form-panel danger-panel"><div class="notice danger-notice">This action is permanent. Active issued books will not be deleted.</div><div class="delete-history-grid"><label>Type DELETE HISTORY<input id="deleteBorrowHistoryConfirm" placeholder="DELETE HISTORY" autocomplete="off"></label><label>Admin password<input id="deleteBorrowHistoryPassword" type="password" autocomplete="current-password"></label></div><div class="form-action"><button id="deleteBorrowHistoryBtn" class="btn danger">Delete Borrowed History</button></div></div>
+  <div class="panel form-panel danger-panel"><div class="notice danger-notice">This action is permanent. Active issued books will not be deleted.</div><div class="delete-history-grid"><label>Type DELETE HISTORY<input id="deleteBorrowHistoryConfirm" placeholder="DELETE HISTORY" autocomplete="off"></label><label>Admin password<input id="deleteBorrowHistoryPassword" type="password" autocomplete="current-password"></label></div><div class="form-action delete-action"><button id="deleteBorrowHistoryBtn" class="btn danger">Delete Borrowed History</button></div></div>
 </section>
 
 <section id="deleteStudentLogs" class="dashboard-section">
   <div class="section-head"><div><span class="eyebrow">DELETE</span><h2>Delete Student Logs</h2><p>Delete student access logs between a selected start and end date.</p></div></div>
-  <div class="panel form-panel danger-panel"><div class="notice danger-notice">Choose the date range carefully. Selected logs will be permanently deleted.</div><div class="delete-history-grid"><label>Start date<input id="deleteLogsFrom" type="date"></label><label>End date<input id="deleteLogsTo" type="date"></label><label>Type DELETE LOGS<input id="deleteLogsConfirm" placeholder="DELETE LOGS" autocomplete="off"></label><label>Admin password<input id="deleteLogsPassword" type="password" autocomplete="current-password"></label></div><div class="form-action"><button id="deleteStudentLogsBtn" class="btn danger">Delete Student Logs</button></div></div>
+  <div class="panel form-panel danger-panel"><div class="notice danger-notice">Choose the date range carefully. Selected logs will be permanently deleted.</div><div class="delete-history-grid"><label>Start date<input id="deleteLogsFrom" type="date"></label><label>End date<input id="deleteLogsTo" type="date"></label><label>Type DELETE LOGS<input id="deleteLogsConfirm" placeholder="DELETE LOGS" autocomplete="off"></label><label>Admin password<input id="deleteLogsPassword" type="password" autocomplete="current-password"></label></div><div class="form-action delete-action"><button id="deleteStudentLogsBtn" class="btn danger">Delete Student Logs</button></div></div>
 </section>
 
 <section id="documents" class="dashboard-section"><div class="section-head"><div><span class="eyebrow">DOCUMENTS</span><h2>Browse Documents</h2><p>Google Drive-style browser. Admin can open, inspect uploader/time, move files and delete documents.</p></div></div><div class="panel drive-panel"><div id="driveBreadcrumb" class="breadcrumbs"></div><div class="drive-toolbar"><div class="drive-search"><span>⌕</span><input id="docSearch" list="docSuggestions" placeholder="Search in Drive"></div><button id="refreshDocs" class="btn secondary">↻ Refresh</button></div><div id="driveGrid" class="drive-grid"></div><div id="driveEmpty" class="empty-state hidden"><div>▰</div><h3>No files or folders</h3><p>This location is empty.</p></div></div></section>
@@ -126,7 +130,7 @@
 <section id="studentDocuments" class="dashboard-section"><div class="section-head"><div><span class="eyebrow">STUDENTS</span><h2>Document Send History</h2><p>Student question-paper/document send actions with recipients and time.</p></div><div class="head-actions"><button id="exportStudentDocHistory" class="btn secondary">Excel</button><button id="pdfStudentDocHistory" class="btn secondary">PDF</button></div></div><div class="panel"><div class="toolbar"><input id="studentDocHistorySearch" list="topicSuggestions" placeholder="Search student, roll no. or document…"></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Student</th><th>Roll No.</th><th>Document</th><th>Recipients</th><th>Sender</th><th>Time</th><th>Status</th></tr></thead><tbody id="studentDocHistoryBody"></tbody></table></div></div></section>
 
 <section id="categories" class="dashboard-section"><div class="section-head"><div><span class="eyebrow">CATEGORIES</span><h2>Manage Categories</h2></div><button id="addCategoryBtn" class="btn primary">＋ Add Category</button></div><div class="panel"><div class="table-wrap"><table class="data-table"><thead><tr><th>S.No.</th><th>Name</th><th>Books</th><th>Action</th></tr></thead><tbody id="categoriesBody"></tbody></table></div></div></section>
-<section id="categoryBrowse" class="dashboard-section"><div class="section-head"><div><span class="eyebrow">CATEGORIES</span><h2>Browse by Category</h2></div><div class="head-actions"><button id="exportCategory" class="btn secondary">Excel</button><button id="pdfCategory" class="btn secondary">PDF</button></div></div><div class="panel"><div class="toolbar"><select id="categoryBrowseSelect"><option value="">All categories</option></select><input id="categoryBrowseSearch" list="topicSuggestions" placeholder="Search title or author…"></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Book</th><th>Author</th><th>Category</th><th>Access No.</th><th>Status</th></tr></thead><tbody id="categoryBrowseBody"></tbody></table></div></div></section>
+<section id="categoryBrowse" class="dashboard-section"><div class="section-head"><div><span class="eyebrow">CATEGORIES</span><h2>Audit</h2></div><div class="head-actions"><button id="exportCategory" class="btn secondary">Excel</button><button id="pdfCategory" class="btn secondary">PDF</button></div></div><div class="panel"><div class="toolbar"><select id="categoryBrowseSelect"><option value="">All categories</option></select><input id="categoryBrowseSearch" list="topicSuggestions" placeholder="Search title or author…"></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Book</th><th>Author</th><th>Category</th><th>Access No.</th><th>Status</th></tr></thead><tbody id="categoryBrowseBody"></tbody></table></div></div></section>
 
 <section id="overdue" class="dashboard-section"><div class="section-head"><div><span class="eyebrow">PRIMARY</span><h2>Overdue Books</h2><p>Mail is never automatic. Click the mail icon/button and confirm to send one combined reminder for that faculty.</p></div><div class="head-actions"><button id="exportOverdue" class="btn secondary">Excel</button><button id="pdfOverdue" class="btn secondary">PDF</button></div></div><div class="panel"><div class="notice">The overdue email function enforces the 7-day recipient cooldown on the server. One email contains all currently overdue books of that faculty.</div><div class="toolbar"><input id="overdueSearch" list="activeIssuedSuggestions" placeholder="Search book, access no., faculty ID or email…"><button id="refreshOverdue" class="btn secondary">↻ Refresh</button></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Book</th><th>Faculty</th><th>Faculty ID</th><th>Email</th><th>Due</th><th>Days</th><th>Action</th></tr></thead><tbody id="overdueBody"></tbody></table></div></div></section>
 <section id="borrowing" class="dashboard-section"><div class="section-head"><div><span class="eyebrow">PRIMARY</span><h2>Borrowing History</h2><p>Past borrowing records with filters and working Excel/PDF export.</p></div><div class="head-actions"><button id="exportBorrowing" class="btn secondary">Excel</button><button id="pdfBorrowing" class="btn secondary">PDF</button></div></div><div class="panel"><div class="toolbar history-filters"><input id="borrowFrom" type="date"><input id="borrowTo" type="date"><select id="borrowCategory"><option value="">All categories</option></select><input id="borrowAuthor" list="authorSuggestions" placeholder="Author"><input id="borrowTopic" list="topicSuggestions" placeholder="Book / topic"><button id="loadBorrowing" class="btn primary">Apply Filters</button><button id="clearBorrowing" class="btn secondary">Clear</button></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Book</th><th>Author</th><th>Category</th><th>Faculty</th><th>Issued</th><th>Returned</th><th>Status</th></tr></thead><tbody id="borrowingBody"></tbody></table></div></div></section>
@@ -139,12 +143,53 @@
 
 <div id="drawer" class="drawer"><div class="drawer-head"><div><span class="eyebrow">BOOK DETAILS</span><h3 id="drawerTitle">Book</h3></div><button id="drawerClose" class="close">×</button></div><div id="drawerBody" class="drawer-body"></div></div><div id="drawerBackdrop" class="drawer-backdrop"></div>
 
+<div id="adminProfileModal" class="modal-layer">
+  <div class="modal-card admin-profile-modal-card">
+    <button id="closeAdminProfileModal" class="modal-close">×</button>
+    <div class="eyebrow">ADMIN PROFILE</div>
+    <h2>Administrator Profile</h2>
+    <p class="modal-muted">Choose what you want to change.</p>
+
+    <div id="profileOptions" class="profile-option-grid">
+      <button type="button" class="profile-option" data-profile-option="password"><span>🔑</span><strong>Change Password</strong><small>Update your administrator password.</small></button>
+      <button type="button" class="profile-option" data-profile-option="email"><span>✉</span><strong>Change Mail</strong><small>Change the administrator email address.</small></button>
+      <button type="button" class="profile-option" data-profile-option="phone"><span>📱</span><strong>Change Mobile No.</strong><small>Update your administrator mobile number.</small></button>
+    </div>
+
+    <div id="profileEditPanel" class="profile-edit-panel hidden">
+      <button type="button" id="profileBackBtn" class="btn secondary tiny">← Back</button>
+      <div id="profilePasswordPanel" class="profile-edit-section hidden">
+        <h3>Change Password</h3>
+        <label>New password<input id="profileNewPassword" type="password" autocomplete="new-password" placeholder="Enter new password"></label>
+        <label>Confirm password<input id="profileConfirmPassword" type="password" autocomplete="new-password" placeholder="Re-enter new password"></label>
+        <button id="saveProfilePassword" type="button" class="btn primary">Change Password</button>
+      </div>
+
+      <div id="profileEmailPanel" class="profile-edit-section hidden">
+        <h3>Change Mail</h3>
+        <label>Current email<input id="profileCurrentEmail" type="email" readonly></label>
+        <label>New email<input id="profileNewEmail" type="email" autocomplete="email" placeholder="Enter new email"></label>
+        <button id="saveProfileEmail" type="button" class="btn primary">Change Mail</button>
+      </div>
+
+      <div id="profilePhonePanel" class="profile-edit-section hidden">
+        <h3>Change Mobile No.</h3>
+        <label>Current mobile<input id="profileCurrentPhone" readonly></label>
+        <label>New mobile number<input id="profileNewPhone" type="tel" autocomplete="tel" placeholder="Enter new mobile number"></label>
+        <button id="saveProfilePhone" type="button" class="btn primary">Change Mobile No.</button>
+      </div>
+
+      <div id="profileMessage" class="profile-message"></div>
+    </div>
+  </div>
+</div>
+
 <div id="analyticsModal" class="modal-layer"><div class="modal-card analytics-modal-card"><button id="closeAnalyticsModal" class="modal-close">×</button><div class="eyebrow">VISUALIZATION</div><h2 id="analyticsModalTitle">Analytics</h2><div class="chart-holder"><canvas id="analyticsChart"></canvas></div><button id="downloadAnalyticsPNG" class="btn secondary">Download PNG</button></div></div>
 <div id="infoModal" class="modal-layer"><div class="modal-card"><button id="closeInfoModal" class="modal-close">×</button><div class="eyebrow">DOCUMENT DETAILS</div><h2 id="infoModalTitle">Details</h2><div id="infoModalBody"></div></div></div>
 <div id="moveDriveModal" class="modal-layer"><div class="modal-card"><button id="closeMoveDriveModal" class="modal-close">×</button><div class="eyebrow">DRIVE</div><h2>Move to folder</h2><p class="modal-muted">Choose a destination. The Google Drive item and MatLib metadata will both be updated.</p><div id="moveDriveList" class="move-folder-list"></div></div></div>
 <div id="exportChooserModal" class="modal-layer"><div class="modal-card export-chooser-card"><button id="closeExportChooser" class="modal-close">×</button><div class="eyebrow">EXPORT</div><h2 id="exportChooserTitle">Choose columns</h2><p class="modal-muted">Select the columns you want to include in this export. Your selection applies only to this download.</p><div class="export-chooser-actions"><button id="exportSelectAll" class="btn secondary tiny">Select all</button><button id="exportSelectNone" class="btn secondary tiny">Select none</button></div><div id="exportColumns" class="export-columns"></div><div class="export-chooser-footer"><button id="cancelExportChooser" class="btn secondary">Cancel</button><button id="confirmExportChooser" class="btn primary">Download</button></div></div></div>
 
 <datalist id="authorSuggestions"></datalist><datalist id="topicSuggestions"></datalist><datalist id="facultySuggestionsList"></datalist><datalist id="categorySuggestions"></datalist><datalist id="calendarSuggestions"></datalist><datalist id="docSuggestions"></datalist><datalist id="facultyIdSuggestions"></datalist><datalist id="activeIssuedSuggestions"></datalist>
-<script src="assets/admin-dashboard.js"></script>
+<script src="assets/admin-dashboard.js?v=20260921"></script>
 </body>
 </html>

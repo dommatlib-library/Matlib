@@ -6,7 +6,18 @@
   const $$ = sel => [...document.querySelectorAll(sel)];
 
   if (!sb) {
-    console.error('MatLib: Supabase client missing. Check assets/config.js.');
+    console.error('MatLib: Supabase client missing at initial load. Retrying after config.js loads...');
+    window.addEventListener('matlib:supabase-ready', () => location.reload(), { once: true });
+    window.setTimeout(() => {
+      if (!(window.matlibSupabase || window.matlib?.sb)) {
+        const el = document.getElementById('systemStatus');
+        if (el) { el.textContent = 'Connection error'; el.classList.add('error'); }
+        const note = document.createElement('div');
+        note.className = 'matlib-fatal-error';
+        note.textContent = 'Supabase client is not available. Check assets/config.js.';
+        document.body.appendChild(note);
+      }
+    }, 1200);
     return;
   }
 
@@ -28,7 +39,10 @@
     editBook: null,
     deleteBook: null,
     pendingAnalytics: null,
-    driveMoveItem: null
+    driveMoveItem: null,
+    activeIssued: [],
+    facultyDetail: null,
+    facultyDetailExport: []
   };
 
   const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' }[c]));
@@ -38,7 +52,7 @@
   const addDays = (iso, days) => { const d = new Date(`${iso}T00:00:00`); d.setDate(d.getDate() + Number(days || 0)); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
   const errText = e => e?.message || e?.details || e?.hint || String(e || 'Unknown error');
   const setText = (id, value) => { const e = $(id); if (e) e.textContent = value; };
-  const bind = (id, event, fn) => { const e = $(id); if (e) e.addEventListener(event, fn); };
+  const bind = (id, event, fn) => { const e = $(id); if (!e) return; if (typeof event === 'function' && fn === undefined) { fn = event; event = 'click'; } if (typeof fn !== 'function') return; e.addEventListener(event, fn); };
   const categoryName = id => state.categories.find(c => String(c.id) === String(id))?.name || '';
   const available = b => String(b?.availability) === '1' || String(b?.availability).toLowerCase() === 'true' || String(b?.status || '').toLowerCase() === 'available';
   const bookMatch = (b, q) => {
@@ -71,6 +85,11 @@
       addBook: prepareAdd,
       editBook: prepareEdit,
       deleteBook: prepareDelete,
+      activeIssued: loadActiveIssued,
+      deleteFaculty: prepareDeleteFaculty,
+      searchFaculty: prepareSearchFaculty,
+      deleteBorrowHistory: prepareDeleteBorrowHistory,
+      deleteStudentLogs: prepareDeleteStudentLogs,
       documents: loadDocuments,
       bookRequests: loadBookRequests,
       returnRequests: loadReturnRequests,
@@ -96,14 +115,18 @@
     if (error) throw error;
     if (!data.session) { location.href = 'admin.html'; return false; }
     const r = await sb.from('admin_profiles').select('id,name,email,phone,role,is_active').eq('id', data.session.user.id).maybeSingle();
-    if (r.error) throw r.error;
-    if (!r.data || !r.data.is_active || r.data.role !== 'admin') {
-      await sb.auth.signOut(); location.href = 'admin.html'; return false;
+    if (r.error) {
+      console.warn('Admin profile read failed; continuing with auth session:', r.error);
+      state.admin = {id:data.session.user.id,name:data.session.user.user_metadata?.name||'Administrator',email:data.session.user.email||'',phone:data.session.user.user_metadata?.phone||'',role:'admin',is_active:true};
+    } else {
+      if (!r.data || !r.data.is_active || r.data.role !== 'admin') {
+        await sb.auth.signOut(); location.href = 'admin.html'; return false;
+      }
+      state.admin = r.data;
     }
-    state.admin = r.data;
-    setText('adminName', r.data.name || 'Administrator');
-    setText('welcome', r.data.name || 'Administrator');
-    setText('avatar', (r.data.name || 'A').trim()[0]?.toUpperCase() || 'A');
+    setText('adminName', state.admin.name || 'Administrator');
+    setText('welcome', state.admin.name || 'Administrator');
+    setText('avatar', (state.admin.name || 'A').trim()[0]?.toUpperCase() || 'A'); setText('headerAvatar', (state.admin.name || 'A').trim()[0]?.toUpperCase() || 'A');
     setText('systemStatus', 'System Online');
     $('systemStatus')?.classList.add('online');
     return true;
@@ -123,7 +146,7 @@
     const r = await sb.from('categories').select('id,name').order('name');
     if (r.error) throw r.error;
     state.categories = r.data || [];
-    const ids = ['addCategory','editCategory','bookCategory','bhCategory','borrowCategory','categoryBrowseSelect'];
+    const ids = ['addCategory','editCategory','bookCategory','bhCategory','borrowCategory','categoryBrowseSelect','activeIssuedCategory'];
     ids.forEach(id => {
       const s = $(id); if (!s) return;
       const cur = s.value;
@@ -158,14 +181,17 @@
     const authors = unique(state.books.map(b => b.author_name));
     const titles = unique(state.books.map(b => b.book_name));
     const faculty = unique(state.faculty.map(f => f.name));
+    const facultyIds = unique(state.faculty.map(f => f.faculty_id));
     const categories = unique(state.categories.map(c => c.name));
     const fill = (id, values) => { const d = $(id); if (d) d.innerHTML = values.slice(0, 1000).map(v => `<option value="${esc(v)}"></option>`).join(''); };
     fill('authorSuggestions', authors);
     fill('topicSuggestions', titles);
     fill('facultySuggestionsList', faculty);
+    fill('facultyIdSuggestions', facultyIds);
     fill('categorySuggestions', categories);
     fill('calendarSuggestions', [...titles, ...faculty, ...categories]);
     fill('docSuggestions', [...state.drive.files.map(f=>f.name), ...state.drive.folders.map(f=>f.name)]);
+    fill('activeIssuedSuggestions', [...state.activeIssued.map(x=>x.book_name), ...state.activeIssued.map(x=>x.access_no), ...state.activeIssued.map(x=>x.faculty_name), ...state.activeIssued.map(x=>x.faculty_id_text)]);
   }
 
   function renderBookCatalogue() {
@@ -412,95 +438,20 @@
     $('bookReqBody').innerHTML=rows.length?rows.map(x=>{const b=(br.data||[]).find(v=>v.id===x.book_id),f=(fr.data||[]).find(v=>v.id===x.faculty_id);return `<tr><td><strong>${esc(b?.book_name||'Unknown')}</strong><small>${esc(b?.access_no||'')}</small></td><td>${esc(f?.name||'Unknown')}<small>${esc(f?.faculty_id||'')}</small></td><td>${dt(x.requested_at)}</td><td>${esc(x.notes||'—')}</td><td><div class="actions"><button type="button" class="btn success tiny" data-approve-book="${x.id}">Approve</button><button type="button" class="btn danger tiny" data-reject-book="${x.id}">Reject</button></div></td></tr>`}).join(''):'<tr><td colspan="5" class="empty">No active book requests.</td></tr>';
   }
   async function approveBookRequest(id){
-    try {
-      const requestId = Number(id);
-      const due = await datePrompt('Set due date', addDays(isoToday(), 90));
-
-      if (!due) return;
-      if (due < isoToday()) {
-        return toast('Due date cannot be before today.', 'error');
+    try{
+      const requestId=Number(id);if(!Number.isFinite(requestId))return toast('Invalid book request.','error');
+      const due=datePrompt('Set due date',addDays(isoToday(),90));if(!due)return;if(!/^\d{4}-\d{2}-\d{2}$/.test(due)||due<isoToday())return toast('Enter a valid due date that is today or later.','error');
+      const primary=await sb.rpc('approve_book_request',{p_request_id:requestId,p_due_date:due});
+      if(primary.error){
+        const req=await sb.from('book_requests').select('id,book_id,faculty_id,status').eq('id',requestId).maybeSingle();if(req.error)throw req.error;if(!req.data)throw new Error('Book request was not found.');if(String(req.data.status).toLowerCase()!=='pending')throw new Error('This book request is no longer pending.');
+        const book=await sb.from('books').select('id,access_no,book_name,availability,status').eq('id',req.data.book_id).maybeSingle();if(book.error)throw book.error;if(!book.data)throw new Error('Requested book was not found.');if(!available(book.data))throw new Error('This book is currently issued.');
+        const issue=await sb.rpc('admin_issue_book',{p_accession_no:book.data.access_no,p_faculty_id:req.data.faculty_id,p_due_date:due});if(issue.error)throw new Error(`${primary.error.message||'Approval RPC failed'}\nFallback issue failed: ${issue.error.message||issue.error}`);
+        const now=new Date().toISOString();const update=await sb.from('book_requests').update({status:'approved',decided_at:now,decided_by:state.admin?.id||null,processed_at:now,processed_by:state.admin?.id||null,due_date:due}).eq('id',requestId);if(update.error)throw update.error;
       }
-
-      // Use the normal server-side approval RPC first.
-      // If an older RPC contains the invalid enum value "Available"/"Issued",
-      // fall back to the existing admin_issue_book RPC and then update the
-      // request record. This avoids the broken old enum assignment.
-      const r = await sb.rpc('approve_book_request', {
-        p_request_id: requestId,
-        p_due_date: due
-      });
-
-      if (r.error) {
-        const message = String(r.error.message || '').toLowerCase();
-        const enumError =
-          message.includes('invalid input value for enum') ||
-          message.includes('book_status');
-
-        if (!enumError) throw r.error;
-
-        const req = await sb
-          .from('book_requests')
-          .select('id,book_id,faculty_id,status')
-          .eq('id', requestId)
-          .maybeSingle();
-
-        if (req.error) throw req.error;
-        if (!req.data) throw new Error('Book request was not found.');
-        if (String(req.data.status).toLowerCase() !== 'pending') {
-          throw new Error('This book request is no longer pending.');
-        }
-
-        const book = await sb
-          .from('books')
-          .select('id,access_no,book_name,availability,status')
-          .eq('id', req.data.book_id)
-          .maybeSingle();
-
-        if (book.error) throw book.error;
-        if (!book.data) throw new Error('Requested book was not found.');
-        if (!available(book.data)) {
-          throw new Error('This book is currently issued.');
-        }
-
-        const issue = await sb.rpc('admin_issue_book', {
-          p_accession_no: book.data.access_no,
-          p_faculty_id: req.data.faculty_id,
-          p_due_date: due
-        });
-
-        if (issue.error) throw issue.error;
-
-        const now = new Date().toISOString();
-        const update = await sb
-          .from('book_requests')
-          .update({
-            status: 'approved',
-            decided_at: now,
-            decided_by: state.admin?.id || null,
-            processed_at: now,
-            processed_by: state.admin?.id || null,
-            due_date: due
-          })
-          .eq('id', requestId);
-
-        if (update.error) throw update.error;
-      }
-
-      toast('Book request approved and issued.');
-
-      await Promise.all([
-        loadBookRequests(),
-        loadBookHistory(),
-        updateStats(),
-        loadBooks()
-      ]);
-
-    } catch (e) {
-      toast(errText(e), 'error');
-    }
+      toast('Book request approved and issued.');await Promise.all([loadBookRequests(),loadBookHistory(),updateStats(),loadBooks()]);
+    }catch(e){toast(errText(e),'error');}
   }
-  async function rejectBookRequest(id){try{const reason=prompt('Reason for rejection:');if(!reason)return;const r=await sb.rpc('reject_book_request',{p_request_id:Number(id),p_reason:reason});if(r.error)throw r.error;toast('Book request rejected.');await Promise.all([loadBookRequests(),loadBookRejections()]);}catch(e){toast(errText(e),'error');}}
-
+  async function rejectBookRequest(id){try{const reason=prompt('Reason for rejection:');if(!reason?.trim())return;const primary=await sb.rpc('reject_book_request',{p_request_id:Number(id),p_reason:reason.trim()});if(primary.error){const now=new Date().toISOString();const update=await sb.from('book_requests').update({status:'rejected',decided_at:now,decided_by:state.admin?.id||null,rejection_reason:reason.trim(),processed_at:now,processed_by:state.admin?.id||null}).eq('id',Number(id)).eq('status','pending');if(update.error)throw new Error(`${primary.error.message||'Rejection RPC failed'}\nFallback update failed: ${update.error.message||update.error}`);}toast('Book request rejected.');await Promise.all([loadBookRequests(),loadBookRejections(),updateStats()]);}catch(e){toast(errText(e),'error');}}
   async function loadReturnRequests(){
     const r=await sb.from('return_requests').select('id,borrow_id,faculty_id,requested_at,status').eq('status','pending').order('requested_at',{ascending:false});if(r.error)throw r.error;const rows=r.data||[];setText('returnReqCount',rows.length);const bids=[...new Set(rows.map(x=>x.borrow_id))],fids=[...new Set(rows.map(x=>x.faculty_id))];const [br,fr]=await Promise.all([bids.length?sb.from('borrow_records').select('id,book_id,student_name,student_roll_no').in('id',bids):Promise.resolve({data:[]}),fids.length?sb.from('faculty_profiles').select('id,name,faculty_id').in('id',fids):Promise.resolve({data:[]})]);const bookIds=[...new Set((br.data||[]).map(x=>x.book_id))];const booksR=bookIds.length?await sb.from('books').select('id,book_name,access_no').in('id',bookIds):{data:[]};
     $('returnReqBody').innerHTML=rows.length?rows.map(x=>{const brr=(br.data||[]).find(v=>v.id===x.borrow_id),b=(booksR.data||[]).find(v=>v.id===brr?.book_id),f=(fr.data||[]).find(v=>v.id===x.faculty_id);return `<tr><td><strong>${esc(b?.book_name||'Unknown')}</strong><small>${esc(b?.access_no||'')}</small></td><td>${esc(f?.name||brr?.student_name||'Unknown')}</td><td>${dt(x.requested_at)}</td><td><div class="actions"><button type="button" class="btn success tiny" data-approve-return="${x.id}">Approve</button><button type="button" class="btn danger tiny" data-reject-return="${x.id}">Reject</button></div></td></tr>`}).join(''):'<tr><td colspan="4" class="empty">No active return requests.</td></tr>';
@@ -593,7 +544,7 @@
       toast(errText(e), 'error');
     }
   }
-  async function rejectReturnRequest(id){try{const reason=prompt('Reason for rejection:');if(!reason)return;const r=await sb.rpc('reject_return_request',{p_request_id:Number(id),p_reason:reason});if(r.error)throw r.error;toast('Return request rejected.');await Promise.all([loadReturnRequests(),loadBookRejections()]);}catch(e){toast(errText(e),'error');}}
+  async function rejectReturnRequest(id){try{const reason=prompt('Reason for rejection:');if(!reason?.trim())return;const primary=await sb.rpc('reject_return_request',{p_request_id:Number(id),p_reason:reason.trim()});if(primary.error){const now=new Date().toISOString();const update=await sb.from('return_requests').update({status:'rejected',decided_at:now,decided_by:state.admin?.id||null,rejection_reason:reason.trim(),processed_at:now,processed_by:state.admin?.id||null}).eq('id',Number(id)).eq('status','pending');if(update.error)throw new Error(`${primary.error.message||'Rejection RPC failed'}\nFallback update failed: ${update.error.message||update.error}`);}toast('Return request rejected.');await Promise.all([loadReturnRequests(),loadBookRejections(),updateStats()]);}catch(e){toast(errText(e),'error');}}
 
   async function loadFacultyRequests(){const r=await sb.from('faculty_profiles').select('id,name,faculty_id,designation,email,created_at,approval_status,is_active').eq('approval_status','pending').order('created_at',{ascending:false});if(r.error)throw r.error;const rows=r.data||[];setText('facultyCount',rows.length);$('facultyBody').innerHTML=rows.length?rows.map(x=>`<tr><td>${esc(x.name)}</td><td><code>${esc(x.faculty_id)}</code></td><td>${esc(x.designation||'—')}</td><td>${esc(x.email)}</td><td><div class="actions"><button type="button" class="btn success tiny" data-approve-faculty="${x.id}">Approve</button><button type="button" class="btn danger tiny" data-reject-faculty="${x.id}">Reject</button></div></td></tr>`).join(''):'<tr><td colspan="5" class="empty">No active faculty requests.</td></tr>';}
   async function approveFaculty(id){try{const r=await sb.rpc('approve_faculty',{p_faculty_id:id});if(r.error)throw r.error;toast('Faculty approved.');await Promise.all([loadFacultyRequests(),loadFacultyData(),loadFacultyHistory()]);}catch(e){toast(errText(e),'error');}}
@@ -701,16 +652,583 @@ async function fetchAllBooks() {
     $('studentDocHistoryBody').innerHTML=rows.length?rows.map(x=>`<tr><td>${esc(x.student_name||'—')}</td><td>${esc(x.roll_no||'—')}</td><td>${esc(x.document_name||'—')}</td><td>${esc(Array.isArray(x.recipients)?x.recipients.join(', '):x.recipients||'—')}</td><td>${esc(x.sender_email||'—')}</td><td>${dt(x.sent_at)}</td><td>${esc(x.status||'initiated')}</td></tr>`).join(''):'<tr><td colspan="7" class="empty">No document send history.</td></tr>';
   }
 
-  function renderCategories(){const body=$('categoriesBody');if(!body)return;body.innerHTML=state.categories.map(c=>`<tr><td>${c.id}</td><td><strong>${esc(c.name)}</strong></td><td>${state.books.filter(b=>String(b.category_id)===String(c.id)).length}</td><td><div class="actions"><button type="button" class="btn secondary tiny" data-edit-cat="${c.id}">Edit</button><button type="button" class="btn danger tiny" data-delete-cat="${c.id}">Delete</button></div></td></tr>`).join('')||'<tr><td colspan="4" class="empty">No categories.</td></tr>';}
+  function renderCategories(){const body=$('categoriesBody');if(!body)return;body.innerHTML=state.categories.map((c,i)=>`<tr><td>${i+1}</td><td><strong>${esc(c.name)}</strong></td><td>${state.books.filter(b=>String(b.category_id)===String(c.id)).length}</td><td><div class="actions"><button type="button" class="btn secondary tiny" data-edit-cat="${c.id}">Edit</button><button type="button" class="btn danger tiny" data-delete-cat="${c.id}">Delete</button></div></td></tr>`).join('')||'<tr><td colspan="4" class="empty">No categories.</td></tr>';}
   async function categoryAdd(){try{const n=prompt('Category name:')?.trim();if(!n)return;const r=await sb.from('categories').insert({name:n});if(r.error)throw r.error;toast('Category added.');await loadCategories();}catch(e){toast(errText(e),'error');}}
   async function categoryEdit(id){try{if(!(await passwordCheck(prompt('Administrator password:')||'')))return;const c=state.categories.find(x=>String(x.id)===String(id));const n=prompt('Category name:',c?.name||'')?.trim();if(!n)return;const r=await sb.from('categories').update({name:n}).eq('id',Number(id));if(r.error)throw r.error;toast('Category updated.');await loadCategories();}catch(e){toast(errText(e),'error');}}
   async function categoryDelete(id){try{if(!(await passwordCheck(prompt('Administrator password:')||'')))return;if(!confirm('Delete this category? Books must not depend on it.'))return;const r=await sb.rpc('admin_delete_category',{p_category_id:Number(id)});if(r.error)throw r.error;toast('Category deleted.');await loadCategories();await loadBooks();}catch(e){toast(errText(e),'error');}}
   function renderCategoryBrowse(){const body=$('categoryBrowseBody');if(!body)return;const c=$('categoryBrowseSelect')?.value||'',q=$('categoryBrowseSearch')?.value||'';const rows=state.books.filter(b=>(!c||String(b.category_id)===c)&&bookMatch(b,q));body.innerHTML=rows.length?rows.map(b=>`<tr><td>${esc(b.book_name)}</td><td>${esc(b.author_name||'—')}</td><td>${esc(b.category||categoryName(b.category_id)||'—')}</td><td><code>${esc(b.access_no||'—')}</code></td><td><span class="badge ${available(b)?'available':'issued'}">${available(b)?'Available':'Issued'}</span></td></tr>`).join(''):'<tr><td colspan="5" class="empty">No books.</td></tr>';}
 
-  async function loadOverdue(){
-    const today=isoToday();const r=await sb.from('borrow_records').select('id,book_id,faculty_id,student_name,student_roll_no,due_date,issued_at,status').eq('status','Issued').lt('due_date',today).order('due_date',{ascending:true});if(r.error)throw r.error;const rows=await enrichBorrow(r.data||[]);setText('sOverdue',rows.length);$('overdueBody').innerHTML=rows.length?rows.map(x=>{const days=Math.max(0,Math.floor((Date.now()-new Date(x.due_date+'T23:59:59').getTime())/86400000));return `<tr><td><strong>${esc(x.book_name)}</strong><small>${esc(x.access_no)}</small></td><td>${esc(x.faculty_name||'—')}</td><td>${esc(x.faculty_email||'—')}</td><td>${fmt(x.due_date)}</td><td>${days}</td><td><button type="button" class="btn secondary tiny" data-overdue="${x.id}">✉ Mail</button></td></tr>`}).join(''):'<tr><td colspan="6" class="empty">No overdue books.</td></tr>';}
-  async function sendOverdueMail(id){try{const r=await sb.functions.invoke('send-overdue-email',{body:{borrow_id:Number(id)}});if(r.error)throw r.error;if(r.data?.reason==='cooldown')return toast(r.data.message||'Reminder already sent within 7 days.','error');if(!r.data?.success)throw new Error(r.data?.message||'Unable to send reminder.');toast(`Reminder sent to ${r.data.recipient || 'faculty'} for ${r.data.overdue_count || 1} overdue book(s).`);}catch(e){toast(errText(e),'error');}}
+  async function loadActiveIssued(){
+    const r=await sb.from('borrow_records').select('id,book_id,faculty_id,student_name,student_roll_no,issued_at,due_date,status,returned_at').eq('status','Issued').is('returned_at',null).order('due_date',{ascending:true});
+    if(r.error)throw r.error;
+    let rows=await enrichBorrow(r.data||[]);
+    const q=String($('activeIssuedSearch')?.value||'').trim().toLowerCase();
+    const cat=$('activeIssuedCategory')?.value||'';
+    rows=rows.filter(x=>(!cat||String(x.category)===cat)&&(!q||`${x.book_name} ${x.access_no} ${x.author_name} ${x.faculty_name} ${x.faculty_id_text}`.toLowerCase().includes(q)));
+    const sort=$('activeIssuedSort')?.value||'due';
+    rows.sort((a,b)=>sort==='faculty'?String(a.faculty_name).localeCompare(String(b.faculty_name)):sort==='issued'?String(a.issued_at||'').localeCompare(String(b.issued_at||'')):String(a.due_date||'').localeCompare(String(b.due_date||'')));
+    state.activeIssued=rows;
+    setText('activeIssuedCount',`${rows.length.toLocaleString('en-IN')} book${rows.length===1?'':'s'}`);
+    const body=$('activeIssuedBody');
+    if(body)body.innerHTML=rows.length?rows.map(x=>`<tr><td><strong>${esc(x.book_name)}</strong><small>${esc(x.category||'—')}</small></td><td><code>${esc(x.access_no||'—')}</code></td><td>${esc(x.author_name||'—')}</td><td>${esc(x.faculty_name||'—')}</td><td><code>${esc(x.faculty_id_text||'—')}</code></td><td>${dt(x.issued_at)}</td><td>${fmt(x.due_date)}</td><td><span class="badge issued">Issued</span></td></tr>`).join(''):'<tr><td colspan="8" class="empty">No active issued books.</td></tr>';
+  }
 
+  function facultyById(value){
+    const q=String(value||'').trim().toLowerCase();
+    return state.faculty.find(f=>String(f.faculty_id||'').toLowerCase()===q)||null;
+  }
+
+  function renderFacultyLookupSuggestions(inputId,boxId){
+    const q=String($(inputId)?.value||'').trim().toLowerCase();const box=$(boxId);if(!box)return;
+    if(!q){box.classList.add('hidden');box.innerHTML='';return;}
+    const rows=state.faculty.filter(f=>`${f.faculty_id} ${f.name} ${f.email}`.toLowerCase().includes(q)).slice(0,10);
+    box.innerHTML=rows.length?rows.map(f=>`<button type="button" data-faculty-lookup="${esc(f.faculty_id)}"><strong>${esc(f.faculty_id)}</strong><span>${esc(f.name)} · ${esc(f.email)}</span></button>`).join(''):'<div class="suggestion-empty">No approved active faculty found.</div>';
+    box.classList.remove('hidden');
+  }
+
+  function renderDeleteFacultyPreview(f){
+    const box=$('deleteFacultyPreview'),area=$('deleteFacultyConfirmArea');if(!box||!area)return;
+    if(!f){box.classList.add('hidden');area.classList.add('hidden');return;}
+    box.classList.remove('hidden');box.innerHTML=`<div class="preview-icon">♙</div><div><strong>${esc(f.name)}</strong><span>${esc(f.faculty_id)} · ${esc(f.email)}</span><small>${esc(f.designation||'Faculty')} · ${f.is_active?'Active':'Inactive'}</small></div>`;
+    area.classList.remove('hidden');
+  }
+
+  function prepareDeleteFaculty(){
+    if(!state.faculty.length)loadFacultyData();
+    const value=$('deleteFacultySearch')?.value||'';renderDeleteFacultyPreview(facultyById(value));
+  }
+
+  function prepareSearchFaculty(){
+    if(!state.faculty.length)loadFacultyData();
+    const f=facultyById($('facultyDetailSearch')?.value||'');if(f)loadFacultyDetails(f.faculty_id);
+  }
+
+  async function deleteFaculty(){
+    try{
+      const f=facultyById($('deleteFacultySearch')?.value||'');
+      if(!f)return toast('Enter a valid approved Faculty ID.','error');
+      if($('deleteFacultyConfirmText')?.value.trim()!=='DELETE')return toast('Type DELETE to confirm faculty removal.','error');
+      if(!(await passwordCheck($('deleteFacultyPassword')?.value||'')))return;
+      const active=await sb.from('borrow_records').select('id').eq('faculty_id',f.id).eq('status','Issued').is('returned_at',null).limit(1);
+      if(active.error)throw active.error;
+      const docs=await sb.from('drive_files').select('id').eq('uploaded_by',f.id).limit(1);
+      if(docs.error)throw docs.error;
+      if((active.data||[]).length)return toast('Cannot delete this faculty while they have an active issued book. Return the book first.','error');
+      if((docs.data||[]).length)return toast('Cannot delete this faculty while they own uploaded documents. Transfer/delete those documents first; unrelated documents will not be touched.','error');
+      if(!confirm(`Delete faculty ${f.name} (${f.faculty_id})? This cannot be undone.`))return;
+      let r=await sb.rpc('admin_delete_faculty',{p_faculty_id:f.id});
+      if(r.error){
+        const msg=String(r.error.message||'').toLowerCase();
+        if(msg.includes('does not exist')||msg.includes('could not find the function')){
+          r=await sb.from('faculty_profiles').update({is_active:false,updated_at:new Date().toISOString()}).eq('id',f.id);
+          if(r.error)throw r.error;
+          toast('Faculty deactivated because the secure delete RPC is not installed. No books or documents were deleted.','error');
+        }else throw r.error;
+      }else toast('Faculty deleted successfully.');
+      $('deleteFacultySearch').value='';$('deleteFacultyConfirmText').value='';$('deleteFacultyPassword').value='';$('deleteFacultyPreview').classList.add('hidden');$('deleteFacultyConfirmArea').classList.add('hidden');
+      await loadFacultyData();await updateStats();
+    }catch(e){toast(errText(e),'error');}
+  }
+
+  async function loadFacultyDetails(facultyId){
+    try{
+      const f=facultyById(facultyId);if(!f)return toast('Enter a valid approved Faculty ID.','error');
+      const [borR,docR]=await Promise.all([
+        sb.from('borrow_records').select('id,book_id,faculty_id,student_name,student_roll_no,issued_at,due_date,returned_at,status,notes').eq('faculty_id',f.id).order('issued_at',{ascending:false}).limit(5000),
+        sb.from('drive_files').select('id,name,drive_file_id,folder_drive_id,root_folder_id,uploaded_by,mime_type,file_size,drive_url,created_at').eq('uploaded_by',f.id).order('created_at',{ascending:false}).limit(5000)
+      ]);
+      if(borR.error)throw borR.error;if(docR.error)throw docR.error;
+      const rows=await enrichBorrow(borR.data||[]);const active=rows.filter(x=>String(x.status||'').toLowerCase()==='issued'&&!x.returned_at);const past=rows.filter(x=>!active.includes(x));
+      const folderIds=[...new Set((docR.data||[]).map(x=>x.folder_drive_id).filter(Boolean))];let folderMap=new Map();
+      if(folderIds.length){const fr=await sb.from('drive_folders').select('drive_folder_id,name').in('drive_folder_id',folderIds);if(fr.error)throw fr.error;folderMap=new Map((fr.data||[]).map(x=>[String(x.drive_folder_id),x.name]));}
+      state.facultyDetail={faculty:f,active,past,documents:docR.data||[]};state.facultyDetailExport=[
+        ...active.map(x=>({section:'Active Books',book:x.book_name,access_no:x.access_no,author:x.author_name,issued_at:dt(x.issued_at),due_date:fmt(x.due_date),status:x.status})),
+        ...past.map(x=>({section:'Past Borrowing',book:x.book_name,access_no:x.access_no,author:x.author_name,issued_at:dt(x.issued_at),returned_at:fmt(x.returned_at),status:x.status})),
+        ...(docR.data||[]).map(x=>({section:'Document',document:x.name,folder:folderMap.get(String(x.folder_drive_id))||'Root',uploaded_at:dt(x.created_at),mime_type:x.mime_type||''}))
+      ];
+      $('facultyDetailsEmpty')?.classList.add('hidden');$('facultyDetails')?.classList.remove('hidden');setText('facultyDetailName',f.name||'—');setText('facultyDetailMeta',`${f.faculty_id} · ${f.email} · ${f.designation||'Faculty'}`);setText('facultyActiveCount',active.length);setText('facultyPastCount',past.length);setText('facultyDocCount',(docR.data||[]).length);
+      $('facultyActiveBooksBody').innerHTML=active.length?active.map(x=>`<tr><td>${esc(x.book_name)}</td><td><code>${esc(x.access_no||'—')}</code></td><td>${dt(x.issued_at)}</td><td>${fmt(x.due_date)}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">No active books.</td></tr>';
+      $('facultyPastBooksBody').innerHTML=past.length?past.map(x=>`<tr><td>${esc(x.book_name)}</td><td><code>${esc(x.access_no||'—')}</code></td><td>${dt(x.issued_at)}</td><td>${fmt(x.returned_at)}</td><td>${esc(x.status||'—')}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">No past borrowing records.</td></tr>';
+      $('facultyDocumentsBody').innerHTML=(docR.data||[]).length?docR.data.map(x=>`<tr><td><strong>${esc(x.name)}</strong></td><td>${esc(folderMap.get(String(x.folder_drive_id))||'Root')}</td><td>${dt(x.created_at)}</td><td>${esc(x.mime_type||'—')}</td></tr>`).join(''):'<tr><td colspan="4" class="empty">No documents uploaded by this faculty.</td></tr>';
+    }catch(e){toast(errText(e),'error');}
+  }
+
+/* =========================================================
+   OVERDUE BOOKS
+   ========================================================= */
+
+async function loadOverdue() {
+  try {
+    const today = isoToday();
+
+    const r = await sb
+      .from("borrow_records")
+      .select(
+        "id,book_id,faculty_id,student_name,student_roll_no,due_date,issued_at,status,returned_at"
+      )
+      .eq("status", "Issued")
+      .is("returned_at", null)
+      .lt("due_date", today)
+      .order("due_date", {
+        ascending: true
+      });
+
+    if (r.error) {
+      throw r.error;
+    }
+
+    let rows = await enrichBorrow(
+      r.data || []
+    );
+
+    /* ---------------------------------------------
+       Search
+       --------------------------------------------- */
+
+    const q = String(
+      $("overdueSearch")?.value || ""
+    )
+      .trim()
+      .toLowerCase();
+
+    rows = rows.filter((x) => {
+      if (!q) return true;
+
+      return `
+        ${x.book_name || ""}
+        ${x.access_no || ""}
+        ${x.faculty_name || ""}
+        ${x.faculty_id_text || ""}
+        ${x.faculty_email || ""}
+      `
+        .toLowerCase()
+        .includes(q);
+    });
+
+    /* ---------------------------------------------
+       Update overdue count
+       --------------------------------------------- */
+
+    setText(
+      "sOverdue",
+      rows.length
+    );
+
+    /* ---------------------------------------------
+       Render table
+       --------------------------------------------- */
+
+    const body = $("overdueBody");
+
+    if (!body) {
+      console.warn(
+        "overdueBody element not found."
+      );
+      return;
+    }
+
+    if (!rows.length) {
+      body.innerHTML = `
+        <tr>
+          <td
+            colspan="7"
+            class="empty"
+          >
+            No overdue books.
+          </td>
+        </tr>
+      `;
+
+      return;
+    }
+
+    body.innerHTML = rows
+      .map((x) => {
+        const dueDate = x.due_date
+          ? String(x.due_date).substring(0, 10)
+          : "";
+
+        let days = 0;
+
+        if (dueDate) {
+          const dueTime = new Date(
+            `${dueDate}T23:59:59`
+          ).getTime();
+
+          days = Math.max(
+            0,
+            Math.floor(
+              (Date.now() - dueTime) /
+                86400000
+            )
+          );
+        }
+
+        return `
+          <tr>
+
+            <td>
+              <strong>
+                ${esc(
+                  x.book_name || "Unknown Book"
+                )}
+              </strong>
+
+              <small>
+                ${esc(
+                  x.access_no || "—"
+                )}
+              </small>
+            </td>
+
+            <td>
+              ${esc(
+                x.faculty_name || "—"
+              )}
+            </td>
+
+            <td>
+              ${esc(
+                x.faculty_id_text || "—"
+              )}
+            </td>
+
+            <td>
+              ${esc(
+                x.faculty_email || "—"
+              )}
+            </td>
+
+            <td>
+              ${dueDate
+                ? fmt(dueDate)
+                : "—"}
+            </td>
+
+            <td>
+              ${days}
+            </td>
+
+            <td>
+              <button
+                type="button"
+                class="btn secondary tiny"
+                data-overdue="${esc(
+                  String(x.id)
+                )}"
+              >
+                ✉ Mail
+              </button>
+            </td>
+
+          </tr>
+        `;
+      })
+      .join("");
+
+  } catch (e) {
+    console.error(
+      "LOAD OVERDUE ERROR:",
+      e
+    );
+
+    toast(
+      errText(e),
+      "error"
+    );
+  }
+}
+
+
+/* =========================================================
+   SEND OVERDUE EMAIL
+   ========================================================= */
+
+async function sendOverdueMail(id) {
+  try {
+
+    /* ---------------------------------------------
+       Validate borrow ID
+       --------------------------------------------- */
+
+    if (
+      id === undefined ||
+      id === null ||
+      String(id).trim() === ""
+    ) {
+      throw new Error(
+        "Borrow record ID is missing."
+      );
+    }
+
+    /*
+      IMPORTANT:
+      borrow_records.id is a UUID.
+
+      Do NOT use Number(id).
+    */
+
+    const borrowId =
+      String(id).trim();
+
+    console.log(
+      "======================================"
+    );
+
+    console.log(
+      "MATLIB OVERDUE EMAIL"
+    );
+
+    console.log(
+      "Borrow ID:",
+      borrowId
+    );
+
+    console.log(
+      "======================================"
+    );
+
+
+    /* ---------------------------------------------
+       Optional confirmation
+       --------------------------------------------- */
+
+    const confirmed = confirm(
+      "Send an overdue reminder email to this faculty member?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+
+    /* ---------------------------------------------
+       Get current session
+       --------------------------------------------- */
+
+    const {
+      data: sessionData,
+      error: sessionError
+    } = await sb.auth.getSession();
+
+    if (sessionError) {
+      throw sessionError;
+    }
+
+    const session =
+      sessionData?.session;
+
+    if (!session) {
+      throw new Error(
+        "Admin session expired. Please login again."
+      );
+    }
+
+
+    /* ---------------------------------------------
+       Call Edge Function
+       --------------------------------------------- */
+
+    const r =
+      await sb.functions.invoke(
+        "send-overdue-email",
+        {
+          body: {
+            borrow_id: borrowId
+          }
+        }
+      );
+
+
+    console.log(
+      "OVERDUE EMAIL RESPONSE:",
+      r
+    );
+
+
+    /* ---------------------------------------------
+       Edge Function error
+       --------------------------------------------- */
+
+    if (r.error) {
+
+      console.error(
+        "OVERDUE EMAIL ERROR:",
+        r.error
+      );
+
+
+      /* -------------------------------------------
+         Read actual Edge Function response
+         ------------------------------------------- */
+
+      if (r.error.context) {
+
+        try {
+
+          const responseBody =
+            await r.error.context.text();
+
+          console.error(
+            "EDGE FUNCTION RAW RESPONSE:",
+            responseBody
+          );
+
+
+          let parsed = null;
+
+          try {
+            parsed =
+              JSON.parse(
+                responseBody
+              );
+          } catch (_) {
+            // Response wasn't JSON
+          }
+
+
+          const actualMessage =
+            parsed?.message ||
+            parsed?.error ||
+            responseBody ||
+            r.error.message ||
+            "Unable to send overdue email.";
+
+
+          throw new Error(
+            actualMessage
+          );
+
+        } catch (readError) {
+
+          if (
+            readError instanceof Error
+          ) {
+            throw readError;
+          }
+
+          throw r.error;
+        }
+      }
+
+
+      throw r.error;
+    }
+
+
+    /* ---------------------------------------------
+       Validate Edge Function response
+       --------------------------------------------- */
+
+    if (!r.data) {
+      throw new Error(
+        "No response received from overdue email service."
+      );
+    }
+
+
+    if (
+      r.data.success !== true
+    ) {
+
+      /*
+        Handle cooldown response if
+        the Edge Function sends one.
+      */
+
+      if (
+        r.data.reason ===
+        "cooldown"
+      ) {
+
+        toast(
+          r.data.message ||
+          "Reminder already sent recently.",
+          "error"
+        );
+
+        return;
+      }
+
+
+      throw new Error(
+        r.data.message ||
+        "Unable to send overdue reminder."
+      );
+    }
+
+
+    /* ---------------------------------------------
+       SUCCESS
+       --------------------------------------------- */
+
+    console.log(
+      "======================================"
+    );
+
+    console.log(
+      "OVERDUE EMAIL SENT SUCCESSFULLY"
+    );
+
+    console.log(
+      "Recipient:",
+      r.data.recipient
+    );
+
+    console.log(
+      "Overdue count:",
+      r.data.overdue_count
+    );
+
+    console.log(
+      "Email ID:",
+      r.data.email_id
+    );
+
+    console.log(
+      "======================================"
+    );
+
+
+    toast(
+      `Reminder sent to ${
+        r.data.recipient ||
+        "faculty"
+      } for ${
+        r.data.overdue_count ||
+        1
+      } overdue book${
+        Number(
+          r.data.overdue_count || 1
+        ) === 1
+          ? ""
+          : "s"
+      }.`,
+      "success"
+    );
+
+
+    /* ---------------------------------------------
+       Refresh overdue list
+       --------------------------------------------- */
+
+    await loadOverdue();
+
+
+  } catch (e) {
+
+    console.error(
+      "FINAL OVERDUE EMAIL ERROR:",
+      e
+    );
+
+    toast(
+      e?.message ||
+      "Unable to send overdue email.",
+      "error"
+    );
+  }
+}
   async function loadDocuments(){
     try {
       const [a,b,c]=await Promise.all([
@@ -755,7 +1273,7 @@ async function fetchAllBooks() {
     $('driveBreadcrumb').innerHTML=`<button data-drive-home>My Drive</button>`+(cur?`<span>›</span><button data-drive-crumb="0">${esc(cur.type==='root'?cur.name:state.drive.roots.find(r=>String(r.id)===String(cur.root_folder_id))?.name||'Root')}</button>`:'')+state.drive.path.slice(cur?.type==='root'?1:1).map((p,i)=>`<span>›</span><button data-drive-crumb="${i+1}">${esc(p.name)}</button>`).join('');
     let html=folders.map(x=>`<div class="drive-item folder"><button class="drive-open-area" data-drive-open="${x._type}:${x.id}"><div class="drive-icon">▰</div><div class="drive-main"><strong>${esc(x.name)}</strong><small>Folder · ${esc(x.person?.name||'Unknown')} · ${fmt(x.created_at)}</small></div></button><button class="drive-menu-btn" data-drive-actions="folder:${x.id}" title="Folder actions">⋮</button></div>`).join('');
     html+=files.map(x=>`<div class="drive-item file"><button class="drive-open-area" data-drive-file="${x.id}"><div class="drive-icon">${String(x.mime_type||'').includes('pdf')?'PDF':'▤'}</div><div class="drive-main"><strong>${esc(x.name)}</strong><small>${esc(x.mime_type||'File')} · ${esc(x.person?.name||'Unknown')} · ${dt(x.created_at)}</small></div></button><button class="drive-menu-btn" data-drive-actions="file:${x.id}" title="File actions">⋮</button></div>`).join('');
-    $('driveGrid').innerHTML=html;$('driveEmpty').classList.toggle('hidden',!html);
+    $('driveGrid').innerHTML=html;const empty=!folders.length&&!files.length;$('driveEmpty').classList.toggle('hidden',!empty);
   }
   function openDriveItem(token){const [type,id]=token.split(':');if(type==='root'){const r=state.drive.roots.find(x=>String(x.id)===id);if(r)state.drive.path=[{...r,type:'root'}];}else{const f=state.drive.folders.find(x=>String(x.id)===id);if(f)state.drive.path=[...state.drive.path,{...f,type:'folder'}];}renderDrive();}
 
@@ -781,31 +1299,31 @@ async function fetchAllBooks() {
   async function moveDriveItem(targetToken){try{const [type,id]=state.driveMoveItem.split(':');const [tt,tid]=targetToken.split(':');if(type==='file'){const f=state.drive.files.find(x=>String(x.id)===id);if(!f)return;let rootId,folderDriveId='';if(tt==='root'){const r=state.drive.roots.find(x=>String(x.id)===tid);rootId=r?.id;folderDriveId=r?.drive_folder_id;}else{const folder=state.drive.folders.find(x=>String(x.id)===tid);rootId=folder?.root_folder_id;folderDriveId=folder?.drive_folder_id;}if(!rootId||!folderDriveId)return;await driveManager('move_file',{file_id:Number(id),target_root_id:Number(rootId),target_folder_drive_id:folderDriveId});}else{const folder=state.drive.folders.find(x=>String(x.id)===id);if(!folder)return;let rootId,parentDriveId='';if(tt==='root'){const r=state.drive.roots.find(x=>String(x.id)===tid);rootId=r?.id;parentDriveId=r?.drive_folder_id;}else{const p=state.drive.folders.find(x=>String(x.id)===tid);rootId=p?.root_folder_id;parentDriveId=p?.drive_folder_id;}if(!rootId||!parentDriveId)return;await driveManager('move_folder',{folder_id:Number(id),target_root_id:Number(rootId),target_parent_drive_id:parentDriveId});}closeMoveModal();toast('Moved successfully.');await loadDocuments();}catch(e){toast(errText(e),'error');}}
   function closeMoveModal(){$('moveDriveModal')?.classList.remove('open');state.driveMoveItem=null;}
 
-  function updateStats(){return Promise.all([sb.from('books').select('id',{count:'exact',head:true}),sb.from('book_requests').select('id',{count:'exact',head:true}).eq('status','pending'),sb.from('borrow_records').select('id',{count:'exact',head:true}).eq('status','Issued'),sb.from('return_requests').select('id',{count:'exact',head:true}).eq('status','pending'),sb.from('faculty_profiles').select('id',{count:'exact',head:true}).eq('approval_status','pending')]).then(([b,br,bo,rr,fr])=>{setText('sBooks',b.count||0);setText('bookCount',(b.count||0).toLocaleString('en-IN'));setText('sReq',br.count||0);setText('sIssued',bo.count||0);setText('bookReqCount',br.count||0);setText('returnReqCount',rr.count||0);setText('facultyCount',fr.count||0);});}
+  function updateStats(){const today=isoToday();return Promise.all([sb.from('books').select('id',{count:'exact',head:true}),sb.from('book_requests').select('id',{count:'exact',head:true}).eq('status','pending'),sb.from('borrow_records').select('id',{count:'exact',head:true}).eq('status','Issued'),sb.from('return_requests').select('id',{count:'exact',head:true}).eq('status','pending'),sb.from('faculty_profiles').select('id',{count:'exact',head:true}).eq('approval_status','pending'),sb.from('borrow_records').select('id',{count:'exact',head:true}).eq('status','Issued').is('returned_at',null).lt('due_date',today)]).then(([b,br,bo,rr,fr,od])=>{setText('sBooks',b.count||0);setText('bookCount',(b.count||0).toLocaleString('en-IN'));setText('sReq',br.count||0);setText('sIssued',bo.count||0);setText('bookReqCount',br.count||0);setText('returnReqCount',rr.count||0);setText('facultyCount',fr.count||0);setText('sOverdue',od.count||0);setText('overdueCount',od.count||0);renderNotifications();});}
 
-  function normalizeExportRows(rows){return (rows||[]).map(r=>{const o={};Object.entries(r).forEach(([k,v])=>{if(Array.isArray(v))o[k]=v.join(', ');else if(v&&typeof v==='object')o[k]=JSON.stringify(v);else o[k]=v??'';});return o;});}
-  function exportExcel(rows,title,name){const data=normalizeExportRows(rows);if(!data.length)return toast('No data to export.','error');if(!window.XLSX)return toast('Excel library is still loading. Try again.','error');const wb=XLSX.utils.book_new();const ws=XLSX.utils.json_to_sheet(data);XLSX.utils.book_append_sheet(wb,ws,'MatLib');XLSX.writeFile(wb,`${name}.xlsx`);toast('Excel export started.');}
-  function exportPDF(rows,title,name){const data=normalizeExportRows(rows);if(!data.length)return toast('No data to export.','error');if(!window.jspdf?.jsPDF)return toast('PDF library is still loading. Try again.','error');const doc=new jspdf.jsPDF({orientation:'landscape',unit:'pt',format:'a4'});doc.setFontSize(16);doc.text(title,40,35);const keys=Object.keys(data[0]);const head=[keys];const body=data.map(r=>keys.map(k=>String(r[k]??'')));if(typeof doc.autoTable==='function'){doc.autoTable({head,body,startY:50,styles:{fontSize:7,cellPadding:4},headStyles:{fillColor:[99,55,23]},margin:{left:30,right:30}});}else{let y=60;doc.setFontSize(7);body.slice(0,45).forEach(row=>{doc.text(row.join(' | ').slice(0,190),30,y);y+=12;});}doc.save(`${name}.pdf`);toast('PDF export started.');}
+  let pendingExport=null;
+  function normalizeExportRows(rows){return (rows||[]).map(r=>{const o={};Object.entries(r||{}).forEach(([k,v])=>{if(Array.isArray(v))o[k]=v.join(', ');else if(v&&typeof v==='object')o[k]=JSON.stringify(v);else o[k]=v??'';});return o;});}
+  function labelExportKey(k){return String(k).replaceAll('_',' ').replace(/\b\w/g,m=>m.toUpperCase());}
+  function rawExportExcel(data,title,name){if(!window.XLSX)return toast('Excel library is still loading. Try again.','error');const wb=XLSX.utils.book_new();const ws=XLSX.utils.json_to_sheet(data);const keys=Object.keys(data[0]||{});ws['!cols']=keys.map(k=>({wch:Math.min(36,Math.max(12,labelExportKey(k).length+4))}));ws['!autofilter']={ref:ws['!ref']};XLSX.utils.book_append_sheet(wb,ws,'MatLib Report');XLSX.writeFile(wb,`${name}.xlsx`);toast('Excel export started.');}
+  function rawExportCSV(data,title,name){const keys=Object.keys(data[0]||{});const csv=[keys.map(labelExportKey),...data.map(r=>keys.map(k=>r[k]))].map(row=>row.map(v=>{const s=String(v??'');return /[",\n]/.test(s)?`"${s.replace(/"/g,'""')}"`:s;}).join(',')).join('\r\n');const blob=new Blob([`\ufeff${csv}`],{type:'text/csv;charset=utf-8;'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${name}.csv`;a.click();URL.revokeObjectURL(a.href);toast('CSV download started.');}
+  function rawExportPDF(data,title,name){if(!window.jspdf?.jsPDF)return toast('PDF library is still loading. Try again.','error');const doc=new jspdf.jsPDF({orientation:'landscape',unit:'pt',format:'a4'});const generated=new Date().toLocaleString('en-IN');doc.setFont('helvetica','bold');doc.setFontSize(16);doc.text('MatLib',32,30);doc.setFontSize(13);doc.text(title,32,50);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(`Generated: ${generated}`,32,65);const keys=Object.keys(data[0]||{}),labels=keys.map(labelExportKey),body=data.map(r=>keys.map(k=>String(r[k]??'')));if(typeof doc.autoTable==='function'){doc.autoTable({head:[labels],body,startY:78,theme:'grid',styles:{font:'helvetica',fontSize:7,cellPadding:4,overflow:'linebreak',valign:'middle'},headStyles:{fillColor:[99,55,23],textColor:255,fontStyle:'bold',fontSize:7},alternateRowStyles:{fillColor:[250,246,239]},margin:{left:28,right:28,top:78,bottom:28},didDrawPage:()=>{doc.setFontSize(7);doc.text(`MatLib · Page ${doc.internal.getNumberOfPages()}`,doc.internal.pageSize.getWidth()-110,doc.internal.pageSize.getHeight()-12);}});}doc.save(`${name}.pdf`);toast('PDF export started.');}
+  function openExportChooser(rows,title,name,format){const data=normalizeExportRows(rows);if(!data.length)return toast('No data to export.','error');const keys=[...new Set(data.flatMap(r=>Object.keys(r)))];pendingExport={data,title,name,format,keys};setText('exportChooserTitle',`Export ${title}`);const box=$('exportColumns');box.innerHTML=keys.map(k=>`<label class="export-column-option"><input type="checkbox" data-export-key="${esc(k)}" checked><span>${esc(labelExportKey(k))}</span></label>`).join('');$('exportChooserModal').classList.add('open');}
+  function closeExportChooser(){pendingExport=null;$('exportChooserModal')?.classList.remove('open');}
+  function confirmExport(){if(!pendingExport)return;const selected=[...document.querySelectorAll('[data-export-key]:checked')].map(x=>x.dataset.exportKey);if(!selected.length)return toast('Select at least one column.','error');const data=pendingExport.data.map(r=>{const o={};selected.forEach(k=>o[k]=r[k]??'');return o;});const p=pendingExport;closeExportChooser();if(p.format==='pdf')rawExportPDF(data,p.title,p.name);else if(p.format==='csv')rawExportCSV(data,p.title,p.name);else rawExportExcel(data,p.title,p.name);}
+  function exportExcel(rows,title,name){openExportChooser(rows,title,name,'xlsx');}
+  function exportCSV(rows,title,name){openExportChooser(rows,title,name,'csv');}
+  function exportPDF(rows,title,name){openExportChooser(rows,title,name,'pdf');}
 
   async function loadAnalytics(){
-    const [bor,books,fac,cats]=await Promise.all([sb.from('borrow_records').select('book_id,faculty_id'),sb.from('books').select('id,book_name,author_name,category,category_id,availability,status').limit(5000),sb.from('faculty_profiles').select('id,name'),sb.from('categories').select('id,name')]);
-    if(bor.error)throw bor.error;if(books.error)throw books.error;if(fac.error)throw fac.error;if(cats.error)throw cats.error;
+    const bor=await sb.from('borrow_records').select('book_id,faculty_id');if(bor.error)throw bor.error;
+    const books=state.books.length?state.books:await fetchAllBooks();const fac=state.faculty.length?state.faculty:(await sb.from('faculty_profiles').select('id,name')).data||[];
     const bc={},fc={};(bor.data||[]).forEach(x=>{if(x.book_id)bc[x.book_id]=(bc[x.book_id]||0)+1;if(x.faculty_id)fc[x.faculty_id]=(fc[x.faculty_id]||0)+1;});
-    state.analytics.book=(books.data||[]).map(x=>({label:x.book_name,value:bc[x.id]||0})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value).slice(0,12);
-    state.analytics.faculty=(fac.data||[]).map(x=>({label:x.name,value:fc[x.id]||0})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value).slice(0,12);
-    const issued=(books.data||[]).filter(available).length; const notIssued=(books.data||[]).length-issued; state.analytics.status=[{label:'Issued',value:notIssued},{label:'Available',value:issued}];
-    const catMap={};(books.data||[]).forEach(x=>{const n=x.category||cats.data?.find(c=>String(c.id)===String(x.category_id))?.name||'Uncategorized';catMap[n]=(catMap[n]||0)+1;});state.analytics.category=Object.entries(catMap).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value);
-    renderAnalyticsCards();
+    state.analytics.book=books.map(x=>({label:x.book_name,value:bc[x.id]||0})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value).slice(0,12);state.analytics.faculty=fac.map(x=>({label:x.name,value:fc[x.id]||0})).filter(x=>x.value>0).sort((a,b)=>b.value-a.value).slice(0,12);
+    const issued=books.filter(x=>!available(x)).length;state.analytics.status=[{label:'Issued',value:issued},{label:'Available',value:books.length-issued}];const catMap={};books.forEach(x=>{const n=x.category||categoryName(x.category_id)||'Uncategorized';catMap[n]=(catMap[n]||0)+1;});state.analytics.category=Object.entries(catMap).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value);renderAnalyticsCards();
   }
-  function renderAnalyticsCards(){
-    const vals=[['analyticsFacultyValue',state.analytics.faculty[0]?.value||0],['analyticsBookValue',state.analytics.book[0]?.value||0],['analyticsIssuedValue',state.analytics.status.find(x=>x.label==='Issued')?.value||0],['analyticsCategoryValue',state.analytics.category[0]?.value||0]];vals.forEach(([id,v])=>setText(id,Number(v).toLocaleString('en-IN')));
-    const subs=[['analyticsFacultySub',state.analytics.faculty[0]?.label||'No issue data'],['analyticsBookSub',state.analytics.book[0]?.label||'No issue data'],['analyticsIssuedSub','Issued vs available'],['analyticsCategorySub',state.analytics.category[0]?.label||'No categories']];subs.forEach(([id,v])=>setText(id,v));
-  }
-  function openAnalyticsCard(type){
-    state.pendingAnalytics=type;const data=state.analytics[type];const title={faculty:'Highest issued faculty',book:'Highly issued books',status:'Currently issued vs available',category:'Category-wise book count'}[type];setText('analyticsModalTitle',title);$('analyticsModal').classList.add('open');renderAnalyticsChart(type,data,title);
-  }
-  function renderAnalyticsChart(type,data,title){
-    if(!window.Chart)return toast('Chart library is still loading. Try again.','error');const canvas=$('analyticsChart');if(state.analyticsChart)state.analyticsChart.destroy();const colors=['#633717','#dfb353','#3f7b52','#ad443d','#7b5aa6','#2d7f8f','#d27c3f','#5d7a3b','#8a4f6d','#3b6ea5','#a65d2a','#5f4b3a'];const config=type==='status'||type==='category'?{type:'doughnut',data:{labels:data.map(x=>x.label),datasets:[{data:data.map(x=>x.value),backgroundColor:colors,borderWidth:2,borderColor:'#fffdf9'}]},options:{responsive:true,plugins:{legend:{position:'right',labels:{padding:18,usePointStyle:true}}}}}:{type:'bar',data:{labels:data.map(x=>x.label),datasets:[{label:title,data:data.map(x=>x.value),backgroundColor:colors,borderRadius:8}]},options:{indexAxis:type==='book'?'y':'x',responsive:true,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,ticks:{precision:0}},y:{beginAtZero:true,ticks:{autoSkip:false}}}}};state.analyticsChart=new Chart(canvas,config);}
+  function renderAnalyticsCards(){const vals=[['analyticsFacultyValue',state.analytics.faculty[0]?.value||0],['analyticsBookValue',state.analytics.book[0]?.value||0],['analyticsIssuedValue',state.analytics.status.find(x=>x.label==='Issued')?.value||0],['analyticsCategoryValue',state.analytics.category[0]?.value||0]];vals.forEach(([id,v])=>setText(id,Number(v).toLocaleString('en-IN')));const subs=[['analyticsFacultySub',state.analytics.faculty[0]?.label||'No issue data'],['analyticsBookSub',state.analytics.book[0]?.label||'No issue data'],['analyticsIssuedSub',`${state.analytics.status[0]?.value||0} issued · ${state.analytics.status[1]?.value||0} available`],['analyticsCategorySub',state.analytics.category[0]?.label||'No categories']];subs.forEach(([id,v])=>setText(id,v));}
+  function openAnalyticsCard(type){const data=state.analytics[type]||[];const title={faculty:'Highest issued faculty',book:'Highly issued books',status:'Currently issued vs available',category:'Category-wise book count'}[type];if(!data.length)return toast('No data is available for this visualization yet.','error');setText('analyticsModalTitle',title);$('analyticsModal').classList.add('open');renderAnalyticsChart(type,data,title);}
+  function renderAnalyticsChart(type,data,title){const canvas=$('analyticsChart');if(!canvas)return;if(state.analyticsChart){try{state.analyticsChart.destroy();}catch(_){ }state.analyticsChart=null;}const colors=['#633717','#dfb353','#3f7b52','#ad443d','#7b5aa6','#2d7f8f','#d27c3f','#5d7a3b','#8a4f6d','#3b6ea5','#a65d2a','#5f4b3a'];if(!window.Chart)return toast('Chart library is still loading. Try again.','error');const config=(type==='status'||type==='category')?{type:'doughnut',data:{labels:data.map(x=>x.label),datasets:[{data:data.map(x=>x.value),backgroundColor:colors.slice(0,data.length),borderWidth:3,borderColor:'#fffdf9'}]},options:{responsive:true,maintainAspectRatio:false,cutout:'52%',plugins:{legend:{position:'right',labels:{padding:18,usePointStyle:true}}}}}:{type:'bar',data:{labels:data.map(x=>x.label),datasets:[{label:title,data:data.map(x=>x.value),backgroundColor:colors.slice(0,data.length),borderRadius:8,maxBarThickness:28}]},options:{indexAxis:type==='book'?'y':'x',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{usePointStyle:true}}},scales:{x:{beginAtZero:true,ticks:{precision:0}},y:{beginAtZero:true,ticks:{autoSkip:false}}}}};state.analyticsChart=new Chart(canvas,config);}
 
   async function loadCalendar(){
     const events=[];
@@ -830,9 +1348,127 @@ async function fetchAllBooks() {
   function applyCalendarFilters(){const q=String($('calendarSearch')?.value||'').toLowerCase();const enabled=[...document.querySelectorAll('[data-calendar-filter]:checked')].map(x=>x.dataset.calendarFilter);state.calendar.filtered=state.calendar.events.filter(e=>(!enabled.length||enabled.includes(e.type))&&(!q||`${e.title} ${e.detail} ${e.type}`.toLowerCase().includes(q)));}
   function renderCalendar(){
     const box=$('calendarGrid');if(!box)return;const d=state.calendar.month,y=d.getFullYear(),m=d.getMonth(),first=new Date(y,m,1),days=new Date(y,m+1,0).getDate(),start=first.getDay();const by={};state.calendar.filtered.forEach(e=>(by[e.date]??=[]).push(e));
-    setText('calendarMonthTitle',d.toLocaleDateString('en-IN',{month:'long',year:'numeric'}));let html=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=>`<div class="calendar-week-name">${x}</div>`).join('');for(let i=0;i<start;i++)html+='<div class="calendar-cell muted-cell"></div>';for(let day=1;day<=days;day++){const date=`${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`,items=by[date]||[];const types=[...new Set(items.map(x=>x.type))].slice(0,5);html+=`<button type="button" class="calendar-cell ${items.length?'has-calendar-events':''}" data-main-calendar-date="${date}"><strong>${day}</strong><div class="calendar-dots">${types.map(t=>`<i class="event-dot ${esc(t)}"></i>`).join('')}</div><small>${items.length?items.length+' event'+(items.length>1?'s':''):''}</small></button>`;}box.innerHTML=html;renderCalendarDay();}
+    setText('calendarMonthTitle',d.toLocaleDateString('en-IN',{month:'long',year:'numeric'}));let html=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=>`<div class="calendar-week-name">${x}</div>`).join('');for(let i=0;i<start;i++)html+='<div class="calendar-cell muted-cell"></div>';for(let day=1;day<=days;day++){const date=`${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`,items=by[date]||[];const types=[...new Set(items.map(x=>x.type))].slice(0,5);html+=`<button type="button" class="calendar-cell ${items.length?'has-calendar-events':''}" data-main-calendar-date="${date}"><strong>${day}</strong><div class="calendar-dots">${types.map(t=>`<i class="event-dot ${esc(t)}"></i>`).join('')}</div><small>${items.length?items.length+' event'+(items.length>1?'s':''):''}</small></button>`;}box.innerHTML=html;renderCalendarAgenda();renderCalendarDay();}
+  function renderCalendarAgenda(){const box=$('calendarAgenda');if(!box)return;const d=state.calendar.month,y=d.getFullYear(),m=d.getMonth(),prefix=`${y}-${String(m+1).padStart(2,'0')}-`;const items=state.calendar.filtered.filter(e=>String(e.date||'').startsWith(prefix)).sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.title).localeCompare(String(b.title)));setText('calendarAgendaTitle',d.toLocaleDateString('en-IN',{month:'long',year:'numeric'}));box.innerHTML=items.length?items.map(e=>`<button type="button" class="agenda-row" data-main-calendar-date="${esc(e.date)}"><span class="event-dot ${esc(e.type)}"></span><span><strong>${esc(e.date)}</strong><small>${esc(e.title)} · ${esc(e.detail)}</small></span></button>`).join(''):'<div class="calendar-day-empty">No events for this month.</div>';}
   function renderCalendarDay(date){const box=$('calendarDayEvents');if(!box)return;const items=state.calendar.filtered.filter(e=>e.date===date);if(!items.length){box.innerHTML='<div class="calendar-day-empty">Select a date with events to see the activity.</div>';return;}box.innerHTML=`<div class="calendar-day-title">${fmt(date)} · ${items.length} event${items.length>1?'s':''}</div>`+items.map(e=>`<div class="calendar-event-row"><span class="event-dot ${esc(e.type)}"></span><div><strong>${esc(e.title)}</strong><small>${esc(e.detail)} · ${esc(e.type.replaceAll('-',' '))}</small></div></div>`).join('');}
 
+  function setProfileMessage(text, type=''){
+    const e=$('profileMessage');
+    if(!e)return;
+    e.textContent=text||'';
+    e.className=`profile-message${type?' '+type:''}`;
+  }
+
+  function resetProfilePanels(){
+    $('profileOptions')?.classList.remove('hidden');
+    $('profileEditPanel')?.classList.add('hidden');
+    ['profilePasswordPanel','profileEmailPanel','profilePhonePanel'].forEach(id=>$(id)?.classList.add('hidden'));
+    setProfileMessage('');
+  }
+
+  function openProfileOption(type){
+    $('profileOptions')?.classList.add('hidden');
+    $('profileEditPanel')?.classList.remove('hidden');
+    ['profilePasswordPanel','profileEmailPanel','profilePhonePanel'].forEach(id=>$(id)?.classList.add('hidden'));
+    const panel={password:'profilePasswordPanel',email:'profileEmailPanel',phone:'profilePhonePanel'}[type];
+    if(panel)$(panel)?.classList.remove('hidden');
+    setProfileMessage('');
+    if(type==='email'){
+      $('profileCurrentEmail').value=state.admin?.email||'';
+      $('profileNewEmail').value='';
+      $('profileNewEmail')?.focus();
+    }
+    if(type==='phone'){
+      $('profileCurrentPhone').value=state.admin?.phone||'—';
+      $('profileNewPhone').value='';
+      $('profileNewPhone')?.focus();
+    }
+    if(type==='password'){
+      $('profileNewPassword').value='';
+      $('profileConfirmPassword').value='';
+      $('profileNewPassword')?.focus();
+    }
+  }
+
+  function openAdminProfile(){
+    if(!state.admin)return;
+    $('profileCurrentEmail').value=state.admin.email||'';
+    $('profileCurrentPhone').value=state.admin.phone||'—';
+    $('profileNewEmail').value='';
+    $('profileNewPhone').value='';
+    $('profileNewPassword').value='';
+    $('profileConfirmPassword').value='';
+    resetProfilePanels();
+    $('adminProfileModal')?.classList.add('open');
+  }
+
+  function closeAdminProfile(){
+    $('adminProfileModal')?.classList.remove('open');
+  }
+
+  async function saveProfilePassword(){
+    try{
+      const password=String($('profileNewPassword')?.value||'');
+      const confirmPassword=String($('profileConfirmPassword')?.value||'');
+      if(password.length<6)return setProfileMessage('Password must contain at least 6 characters.','error');
+      if(password!==confirmPassword)return setProfileMessage('Passwords do not match.','error');
+      setProfileMessage('Changing password…');
+      const {error}=await sb.auth.updateUser({password});
+      if(error)throw error;
+      setProfileMessage('Password changed successfully.','success');
+      $('profileNewPassword').value='';
+      $('profileConfirmPassword').value='';
+      setTimeout(closeAdminProfile,700);
+    }catch(e){
+      console.error('PROFILE PASSWORD:',e);
+      setProfileMessage(errText(e),'error');
+    }
+  }
+
+  async function saveProfileEmail(){
+    try{
+      const email=String($('profileNewEmail')?.value||'').trim().toLowerCase();
+      if(!email)return setProfileMessage('Enter the new email address.','error');
+      if(email===String(state.admin?.email||'').trim().toLowerCase())return setProfileMessage('The new email is the same as the current email.','error');
+      setProfileMessage('Changing email…');
+      const {error:authError}=await sb.auth.updateUser({email});
+      if(authError)throw authError;
+      const {data,error}=await sb.from('admin_profiles').update({email}).eq('id',state.admin.id).select('id,name,email,phone,role,is_active').maybeSingle();
+      if(error)throw error;
+      if(!data)throw new Error('Admin profile email could not be updated. Check the admin_profiles UPDATE policy.');
+      state.admin=data;
+      setText('adminName',data.name||'Administrator');
+      setText('welcome',data.name||'Administrator');
+      setText('avatar',(data.name||'A').trim()[0]?.toUpperCase()||'A');
+      setProfileMessage('Email changed successfully.','success');
+      setTimeout(closeAdminProfile,900);
+    }catch(e){
+      console.error('PROFILE EMAIL:',e);
+      setProfileMessage(errText(e),'error');
+    }
+  }
+
+  async function saveProfilePhone(){
+    try{
+      const phone=String($('profileNewPhone')?.value||'').trim();
+      if(!phone)return setProfileMessage('Enter the new mobile number.','error');
+      setProfileMessage('Changing mobile number…');
+      const {data,error}=await sb.from('admin_profiles').update({phone:phone||null}).eq('id',state.admin.id).select('id,name,email,phone,role,is_active').maybeSingle();
+      if(error)throw error;
+      if(!data)throw new Error('Admin profile mobile number could not be updated. Check the admin_profiles UPDATE policy.');
+      state.admin=data;
+      setProfileMessage('Mobile number changed successfully.','success');
+      setTimeout(closeAdminProfile,700);
+    }catch(e){
+      console.error('PROFILE PHONE:',e);
+      setProfileMessage(errText(e),'error');
+    }
+  }
+
+  function prepareDeleteBorrowHistory(){}
+  function prepareDeleteStudentLogs(){const t=isoToday();if($('deleteLogsFrom')&&!$('deleteLogsFrom').value)$('deleteLogsFrom').value=t;if($('deleteLogsTo')&&!$('deleteLogsTo').value)$('deleteLogsTo').value=t;}
+  async function deleteBorrowHistory(){try{if($('deleteBorrowHistoryConfirm')?.value.trim()!=='DELETE HISTORY')return toast('Type DELETE HISTORY exactly to confirm.','error');if(!(await passwordCheck($('deleteBorrowHistoryPassword')?.value||'')))return;if(!confirm('Permanently delete all past borrowed history? Currently issued books will not be deleted.'))return;const r=await sb.from('borrow_records').select('id').neq('status','Issued').not('returned_at','is',null);if(r.error)throw r.error;const ids=(r.data||[]).map(x=>x.id);if(!ids.length)return toast('No past borrowed history found.');const rr=await sb.from('return_requests').delete().in('borrow_id',ids);if(rr.error)throw rr.error;const d=await sb.from('borrow_records').delete().in('id',ids);if(d.error)throw d.error;toast(`Deleted ${ids.length} past borrowing record${ids.length===1?'':'s'}.`);$('deleteBorrowHistoryConfirm').value='';$('deleteBorrowHistoryPassword').value='';await Promise.all([loadBookHistory(),loadBorrowing(),updateStats()]);}catch(e){toast(errText(e),'error');}}
+  async function deleteStudentLogs(){try{const from=$('deleteLogsFrom')?.value,to=$('deleteLogsTo')?.value;if(!from||!to)return toast('Select both start and end dates.','error');if(from>to)return toast('Start date cannot be after end date.','error');if($('deleteLogsConfirm')?.value.trim()!=='DELETE LOGS')return toast('Type DELETE LOGS exactly to confirm.','error');if(!(await passwordCheck($('deleteLogsPassword')?.value||'')))return;if(!confirm(`Delete all student logs from ${from} to ${to}? This cannot be undone.`))return;const endExclusive=addDays(to,1);const r=await sb.from('student_access_logs').delete().gte('accessed_at',`${from}T00:00:00`).lt('accessed_at',`${endExclusive}T00:00:00`);if(r.error)throw r.error;toast('Student logs deleted for the selected date range.');$('deleteLogsConfirm').value='';$('deleteLogsPassword').value='';await loadStudentLogs();}catch(e){toast(errText(e),'error');}}
   function datePrompt(title, defaultValue){const value=prompt(`${title}\nEnter date (YYYY-MM-DD):`,defaultValue);return value?.trim();}
 
   function updateCalendarSuggestion(){const input=$('calendarSearch');if(!input)return;}
@@ -843,11 +1479,17 @@ async function fetchAllBooks() {
     setText('today',new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'}));
     $$('#nav .nav-item').forEach(b=>b.addEventListener('click',()=>showSection(b.dataset.section)));
     $$('[data-go]').forEach(b=>b.addEventListener('click',()=>showSection(b.dataset.go)));
-    bind('menu','click',()=>$('sidebar').classList.toggle('open'));
-    bind('logout',async()=>{await sb.auth.signOut();location.href='admin.html';});
+    bind('menu','click',()=>$('sidebar').classList.toggle('open'));bind('openAdminProfile','click',openAdminProfile);bind('sidebarAdminProfile','click',openAdminProfile);bind('notificationBtn','click',toggleNotifications);bind('closeNotifications','click',closeNotifications);bind('closeAdminProfileModal','click',closeAdminProfile);bind('profileBackBtn','click',resetProfilePanels);bind('saveProfilePassword','click',saveProfilePassword);bind('saveProfileEmail','click',saveProfileEmail);bind('saveProfilePhone','click',saveProfilePhone);$$('[data-profile-option]').forEach(b=>b.addEventListener('click',()=>openProfileOption(b.dataset.profileOption)));
+    bind('logout',async()=>{
+      try { await sb.auth.signOut(); }
+      catch (e) { console.error('Logout error:', e); }
+      try { localStorage.removeItem('matlib-admin-session'); sessionStorage.clear(); } catch (_) {}
+      location.replace('admin.html');
+    });
     bind('refreshAll',async()=>{await updateStats();await loadBooks();await loadCategories();toast('Dashboard refreshed.');});
     bind('issueAccession','input',lookupIssueBook);bind('issueFacultySearch','input',renderFacultySuggestions);bind('issueBtn','click',issueBook);bind('issueDate','change',updateDueDateFromDays);bind('issueDueDays','input',updateDueDateFromDays);
-    bind('returnAccession','input',lookupReturn);bind('returnBtn','click',returnBook);
+    bind('returnAccession','input',lookupReturn);bind('returnBtn','click',returnBook);bind('deleteBorrowHistoryBtn','click',deleteBorrowHistory);bind('deleteStudentLogsBtn','click',deleteStudentLogs);bind('closeExportChooser','click',closeExportChooser);bind('cancelExportChooser','click',closeExportChooser);bind('confirmExportChooser','click',confirmExport);bind('exportSelectAll','click',()=>$$('[data-export-key]').forEach(x=>x.checked=true));bind('exportSelectNone','click',()=>$$('[data-export-key]').forEach(x=>x.checked=false));
+    bind('activeIssuedSearch','input',loadActiveIssued);bind('activeIssuedCategory','change',loadActiveIssued);bind('activeIssuedSort','change',loadActiveIssued);bind('refreshActiveIssued','click',loadActiveIssued);bind('deleteFacultySearch','input',()=>{renderDeleteFacultyPreview(facultyById($('deleteFacultySearch').value));renderFacultyLookupSuggestions('deleteFacultySearch','deleteFacultySuggestions');});bind('deleteFacultyBtn','click',deleteFaculty);bind('facultyDetailSearch','input',()=>renderFacultyLookupSuggestions('facultyDetailSearch','facultyDetailSuggestions'));bind('searchFacultyBtn','click',()=>loadFacultyDetails($('facultyDetailSearch').value));bind('clearFacultyDetails','click',()=>{$('facultyDetailSearch').value='';$('facultyDetails')?.classList.add('hidden');$('facultyDetailsEmpty')?.classList.remove('hidden');state.facultyDetail=null;state.facultyDetailExport=[];});bind('overdueSearch','input',loadOverdue);
     bind('addCategory','change',()=>{$('addAccess').value=$('addCategory').value?suggestAccess($('addCategory').value):'';});bind('addBookBtn','click',addBook);
     bind('editLookupAccess','change',lookupEdit);bind('editLookupAccess','keydown',e=>{if(e.key==='Enter'){e.preventDefault();lookupEdit();}});bind('editSaveBtn','click',saveEdit);bind('deleteAccess','change',lookupDelete);bind('deleteAccess','keydown',e=>{if(e.key==='Enter'){e.preventDefault();lookupDelete();}});bind('deleteConfirmBtn','click',confirmDelete);
     bind('bookSearch','input',()=>{state.bookPage=1;renderBookCatalogue();});bind('bookCategory','change',()=>{state.bookPage=1;renderBookCatalogue();});bind('bookStatus','change',()=>{state.bookPage=1;renderBookCatalogue();});bind('refreshBooks','click',loadBooks);
@@ -868,6 +1510,7 @@ async function fetchAllBooks() {
     bind('exportCategory','click',()=>{const c=$('categoryBrowseSelect').value,q=$('categoryBrowseSearch').value;exportExcel(state.books.filter(b=>(!c||String(b.category_id)===c)&&bookMatch(b,q)),'MatLib Category Books','matlib-category-books');});bind('pdfCategory','click',()=>{const c=$('categoryBrowseSelect').value,q=$('categoryBrowseSearch').value;exportPDF(state.books.filter(b=>(!c||String(b.category_id)===c)&&bookMatch(b,q)),'MatLib Category Books','matlib-category-books');});
     bind('exportStudentLogs',async()=>{const r=await sb.from('student_access_logs').select('student_name,roll_no,access_type,accessed_at,user_agent').order('accessed_at',{ascending:false}).limit(5000);if(r.error)throw r.error;exportExcel(r.data||[],'MatLib Student Logs','matlib-student-logs');});bind('pdfStudentLogs',async()=>{const r=await sb.from('student_access_logs').select('student_name,roll_no,access_type,accessed_at,user_agent').order('accessed_at',{ascending:false}).limit(5000);if(r.error)throw r.error;exportPDF(r.data||[],'MatLib Student Logs','matlib-student-logs');});
     bind('exportStudentDocHistory',async()=>{const r=await sb.from('student_document_send_history').select('student_name,roll_no,sender_email,document_name,recipients,sent_at,status,drive_url').order('sent_at',{ascending:false}).limit(5000);if(r.error)throw r.error;exportExcel(r.data||[],'MatLib Document Send History','matlib-document-send-history');});bind('pdfStudentDocHistory',async()=>{const r=await sb.from('student_document_send_history').select('student_name,roll_no,sender_email,document_name,recipients,sent_at,status,drive_url').order('sent_at',{ascending:false}).limit(5000);if(r.error)throw r.error;exportPDF(r.data||[],'MatLib Document Send History','matlib-document-send-history');});
+    bind('exportActiveIssuedCsv',()=>exportCSV(state.activeIssued,'MatLib Active Issued Books','matlib-active-issued-books'));bind('pdfActiveIssued',()=>exportPDF(state.activeIssued,'MatLib Active Issued Books','matlib-active-issued-books'));bind('exportFacultyDetailsCsv',()=>exportCSV(state.facultyDetailExport,'MatLib Faculty Details','matlib-faculty-details'));bind('pdfFacultyDetails',()=>exportPDF(state.facultyDetailExport,'MatLib Faculty Details','matlib-faculty-details'));
     bind('exportOverdue',async()=>{const today=isoToday();const r=await sb.from('borrow_records').select('id,book_id,faculty_id,due_date,issued_at,status').eq('status','Issued').lt('due_date',today).order('due_date');if(r.error)throw r.error;const rows=await enrichBorrow(r.data||[]);exportExcel(rows,'MatLib Overdue Books','matlib-overdue-books');});
     bind('pdfOverdue',async()=>{const today=isoToday();const r=await sb.from('borrow_records').select('id,book_id,faculty_id,due_date,issued_at,status').eq('status','Issued').lt('due_date',today).order('due_date');if(r.error)throw r.error;const rows=await enrichBorrow(r.data||[]);exportPDF(rows,'MatLib Overdue Books','matlib-overdue-books');});
     bind('exportCalendar','click',()=>exportExcel(state.calendar.filtered,'MatLib Calendar Events','matlib-calendar-events'));bind('pdfCalendar','click',()=>exportPDF(state.calendar.filtered,'MatLib Calendar Events','matlib-calendar-events'));
@@ -875,15 +1518,16 @@ async function fetchAllBooks() {
     document.addEventListener('click',async e=>{
       try {
         const sf=e.target.closest('[data-select-faculty]');if(sf){selectFaculty(sf.dataset.selectFaculty);return;}
+        const fl=e.target.closest('[data-faculty-lookup]');if(fl){const id=fl.dataset.facultyLookup;if(e.target.closest('#deleteFacultySuggestions')){$('deleteFacultySearch').value=id;renderDeleteFacultyPreview(facultyById(id));$('deleteFacultySuggestions').classList.add('hidden');}else{$('facultyDetailSearch').value=id;loadFacultyDetails(id);$('facultyDetailSuggestions').classList.add('hidden');}return;}
         const vb=e.target.closest('[data-view-book]');if(vb){const b=state.books.find(x=>String(x.id)===String(vb.dataset.viewBook));if(b)openDrawer(b);return;}
         const de=e.target.closest('[data-drawer-edit]');if(de){closeDrawer();showSection('editBook');$('editLookupAccess').value=state.books.find(x=>String(x.id)===String(de.dataset.drawerEdit))?.access_no||'';lookupEdit();return;}
         const dd=e.target.closest('[data-drawer-delete]');if(dd){closeDrawer();showSection('deleteBook');$('deleteAccess').value=state.books.find(x=>String(x.id)===String(dd.dataset.drawerDelete))?.access_no||'';lookupDelete();return;}
-        const ap=e.target.closest('[data-approve-book]');if(ap){ap.disabled=true;await approveBookRequest(ap.dataset.approveBook);return;}
-        const rb=e.target.closest('[data-reject-book]');if(rb){rb.disabled=true;await rejectBookRequest(rb.dataset.rejectBook);return;}
-        const ar=e.target.closest('[data-approve-return]');if(ar){ar.disabled=true;await approveReturnRequest(ar.dataset.approveReturn);return;}
-        const rr=e.target.closest('[data-reject-return]');if(rr){rr.disabled=true;await rejectReturnRequest(rr.dataset.rejectReturn);return;}
-        const af=e.target.closest('[data-approve-faculty]');if(af){af.disabled=true;await approveFaculty(af.dataset.approveFaculty);return;}
-        const rf=e.target.closest('[data-reject-faculty]');if(rf){rf.disabled=true;await rejectFaculty(rf.dataset.rejectFaculty);return;}
+        const ap=e.target.closest('[data-approve-book]');if(ap){await approveBookRequest(ap.dataset.approveBook);return;}
+        const rb=e.target.closest('[data-reject-book]');if(rb){await rejectBookRequest(rb.dataset.rejectBook);return;}
+        const ar=e.target.closest('[data-approve-return]');if(ar){await approveReturnRequest(ar.dataset.approveReturn);return;}
+        const rr=e.target.closest('[data-reject-return]');if(rr){await rejectReturnRequest(rr.dataset.rejectReturn);return;}
+        const af=e.target.closest('[data-approve-faculty]');if(af){await approveFaculty(af.dataset.approveFaculty);return;}
+        const rf=e.target.closest('[data-reject-faculty]');if(rf){await rejectFaculty(rf.dataset.rejectFaculty);return;}
         const ec=e.target.closest('[data-edit-cat]');if(ec){await categoryEdit(ec.dataset.editCat);return;}
         const dc=e.target.closest('[data-delete-cat]');if(dc){await categoryDelete(dc.dataset.deleteCat);return;}
         const ov=e.target.closest('[data-overdue]');if(ov){await sendOverdueMail(ov.dataset.overdue);return;}
@@ -898,14 +1542,51 @@ async function fetchAllBooks() {
         const del=e.target.closest('[data-drive-delete]');if(del){const [type,id]=del.dataset.driveDelete.split(':');await driveDelete(type,id);return;}
         const mt=e.target.closest('[data-move-target]');if(mt){await moveDriveItem(mt.dataset.moveTarget);return;}
         const cd=e.target.closest('[data-main-calendar-date]');if(cd){renderCalendarDay(cd.dataset.mainCalendarDate);return;}
+        const ns=e.target.closest('[data-notification-section]');if(ns){closeNotifications();showSection(ns.dataset.notificationSection);return;}
       } catch(err){console.error(err);toast(errText(err),'error');}
     });
     document.addEventListener('click',e=>{if(!e.target.closest('.faculty-picker'))$('facultySuggestions')?.classList.add('hidden');});
   }
 
+  function renderNotifications(){
+    const items=[
+      {label:'Book Requests',count:Number($('bookReqCount')?.textContent||0),section:'bookRequests',icon:'✉'},
+      {label:'Return Requests',count:Number($('returnReqCount')?.textContent||0),section:'returnRequests',icon:'↩'},
+      {label:'Faculty Requests',count:Number($('facultyCount')?.textContent||0),section:'facultyRequests',icon:'♙'},
+      {label:'Overdue Books',count:Number($('overdueCount')?.textContent||0),section:'overdue',icon:'⚠'}
+    ];
+    const total=items.reduce((a,x)=>a+x.count,0);
+    const badge=$('notificationCount'); if(badge){badge.textContent=total;badge.classList.toggle('hidden',total===0);}
+    const body=$('notificationBody'); if(!body)return;
+    body.innerHTML=items.map(x=>`<button type="button" class="notification-item" data-notification-section="${x.section}"><span class="notification-icon">${x.icon}</span><span><strong>${esc(x.label)}</strong><small>${x.count} pending</small></span><b>${x.count}</b></button>`).join('');
+  }
+  function toggleNotifications(){const p=$('notificationPanel');if(!p)return;renderNotifications();p.classList.toggle('hidden');}
+  function closeNotifications(){$('notificationPanel')?.classList.add('hidden');}
+
   function closeAnalyticsModal(){$('analyticsModal')?.classList.remove('open');if(state.analyticsChart){state.analyticsChart.destroy();state.analyticsChart=null;}}
 
-  window.matlibAdminActions={approveBookRequest,rejectBookRequest,approveReturnRequest,rejectReturnRequest,approveFaculty,rejectFaculty};
+  // Backward-compatible global used by older cached dashboard markup.
+  // Profile editing no longer requires verification codes.
+  window.sendProfileVerificationCode = function(){
+    toast('Verification code is no longer required. Choose Change Password, Change Mail, or Change Mobile No.','success');
+  };
 
-  (async()=>{try{if(!(await requireAdmin()))return;init();await loadCategories();await loadBooks();await loadFacultyData();await updateStats();}catch(e){console.error(e);setText('systemStatus','Connection error');$('systemStatus')?.classList.add('error');toast(errText(e),'error');}})();
+  window.matlibAdminActions={approveBookRequest,rejectBookRequest,approveReturnRequest,rejectReturnRequest,approveFaculty,rejectFaculty,openAdminProfile,saveProfilePassword,saveProfileEmail,saveProfilePhone};
+
+  (async()=>{
+    try{
+      if(!(await requireAdmin()))return;
+      init();
+      const results=await Promise.allSettled([loadCategories(),loadBooks(),loadFacultyData(),updateStats()]);
+      const failures=results.filter(r=>r.status==='rejected');
+      if(failures.length){
+        console.warn('MatLib partial dashboard load:',failures.map(r=>errText(r.reason)));
+        setText('systemStatus','System Online');$('systemStatus')?.classList.remove('error');
+        toast(`${failures.length} optional section${failures.length>1?'s':''} could not load. Other dashboard data is available.`,'error');
+      }else{
+        setText('systemStatus','System Online');$('systemStatus')?.classList.remove('error');
+      }
+      renderNotifications();
+    }catch(e){console.error(e);setText('systemStatus','Connection error');$('systemStatus')?.classList.add('error');toast(errText(e),'error');}
+  })();
 })();

@@ -31,9 +31,12 @@
         </p>
       </div>
 
-      <div class="live-status">
-        <span></span>
-        Live Catalogue
+      <div class="catalogue-header-actions">
+        <div class="live-status">
+          <span></span>
+          Live Catalogue
+        </div>
+        <a class="back-dashboard" href="faculty-dashboard.html">← Faculty Dashboard</a>
       </div>
     </section>
 
@@ -58,6 +61,10 @@
           ×
         </button>
       </div>
+
+      <select id="categoryFilter">
+        <option value="all">All Categories</option>
+      </select>
 
       <select id="availabilityFilter">
         <option value="all">All Books</option>
@@ -129,72 +136,19 @@
   </main>
 
   <!-- Request modal -->
-  <div
-    id="requestModal"
-    class="modal-overlay hidden"
-    aria-hidden="true"
-  >
-    <div
-      class="request-modal"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="requestTitle"
-    >
-
-      <button
-        type="button"
-        id="closeModal"
-        class="modal-close"
-        aria-label="Close request modal"
-      >
-        ×
-      </button>
-
+  <div id="requestModal" class="modal-overlay hidden" aria-hidden="true">
+    <div class="request-modal" role="dialog" aria-modal="true" aria-labelledby="requestTitle">
+      <button type="button" id="closeModal" class="modal-close" aria-label="Close request modal">×</button>
       <div class="modal-icon">📩</div>
-
       <p class="modal-eyebrow">BOOK REQUEST</p>
-
-      <h2 id="requestTitle">
-        Request Book
-      </h2>
-
-      <h3 id="requestBookName">
-        Book name
-      </h3>
-
-      <label for="requestMessage">
-        Message
-      </label>
-
-      <textarea
-        id="requestMessage"
-        rows="4"
-        placeholder="Write your request message..."
-      ></textarea>
-
+      <h2 id="requestTitle">Request Book</h2>
+      <h3 id="requestBookName">Book name</h3>
+      <p class="request-confirm-text">Send a request for this book to the library administrator?</p>
       <div class="modal-actions">
-        <button
-          type="button"
-          id="cancelRequest"
-          class="cancel-button"
-        >
-          Cancel
-        </button>
-
-        <button
-          type="button"
-          id="sendRequest"
-          class="send-button"
-        >
-          📩 Send Request
-        </button>
+        <button type="button" id="cancelRequest" class="cancel-button">Cancel</button>
+        <button type="button" id="sendRequest" class="send-button">📩 Send Request</button>
       </div>
-
-      <p
-        id="requestError"
-        class="request-error hidden"
-      ></p>
-
+      <p id="requestError" class="request-error hidden"></p>
     </div>
   </div>
 
