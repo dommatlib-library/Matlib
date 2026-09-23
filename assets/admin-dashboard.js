@@ -30,8 +30,10 @@
     filteredHistory: [],
     filteredBorrowing: [],
     drive: { roots: [], folders: [], files: [], path: [] },
-    calendar: { month: new Date(new Date().getFullYear(), new Date().getMonth(), 1), events: [], filtered: [] },
+    calendar: { month: new Date(new Date().getFullYear(), new Date().getMonth(), 1), events: [], filtered: [], selectedStart: null, selectedEnd: null },
     analytics: { book: [], faculty: [], status: [], category: [] },
+    bookImportRows: [],
+    driveView: 'grid',
     bookPage: 1,
     bookPageSize: 24,
     selectedFaculty: null,
@@ -96,6 +98,7 @@
       facultyRequests: loadFacultyRequests,
       bookHistory: loadBookHistory,
       facultyHistory: loadFacultyHistory,
+      mailHistory: loadMailHistory,
       bookRejections: loadBookRejections,
       facultyRejections: loadFacultyRejections,
       studentLogs: loadStudentLogs,
@@ -363,81 +366,15 @@
     try {
       const access = $('returnAccession').value.trim();
       if (!access) return toast('Enter an access number.', 'error');
-
       const b = await lookupBookByAccess(access);
       if (!b) return toast('Access number not found.', 'error');
       if (available(b)) return toast('This book is already available.', 'error');
-
-      // Keep the existing server-side RPC as the first choice.
-      // Some older RPC versions try to write the enum value "Available",
-      // while the current books.status enum uses the lowercase value
-      // "available". If that legacy enum error occurs, complete the same
-      // return operation directly using the current schema.
       const r = await sb.rpc('admin_return_book', { p_accession_no: access });
-
-      if (r.error) {
-        const message = String(r.error.message || '').toLowerCase();
-        const enumError =
-          message.includes('invalid input value for enum') ||
-          message.includes('book_status') ||
-          message.includes('"available"');
-
-        if (!enumError) throw r.error;
-
-        // Find the active borrow record for this exact book.
-        const borrow = await sb
-          .from('borrow_records')
-          .select('id,status,returned_at,issued_at,book_id')
-          .eq('book_id', b.id)
-          .eq('status', 'Issued')
-          .is('returned_at', null)
-          .order('issued_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (borrow.error) throw borrow.error;
-        if (!borrow.data) throw new Error('No active borrow record was found for this book.');
-
-        const now = new Date().toISOString();
-
-        const returned = await sb
-          .from('borrow_records')
-          .update({
-            status: 'Returned',
-            returned_at: now
-          })
-          .eq('id', borrow.data.id)
-          .eq('status', 'Issued')
-          .is('returned_at', null);
-
-        if (returned.error) throw returned.error;
-
-        // Restore the book to its current schema's available state.
-        const currentCopies = Number(b.available_copies);
-        const bookUpdate = {
-          status: 'available',
-          availability: 1
-        };
-
-        if (Number.isFinite(currentCopies)) {
-          bookUpdate.available_copies = Math.max(0, currentCopies + 1);
-        }
-
-        const bookResult = await sb
-          .from('books')
-          .update(bookUpdate)
-          .eq('id', b.id);
-
-        if (bookResult.error) throw bookResult.error;
-      }
-
+      if (r.error) throw r.error;
       toast('Book returned successfully.');
-      $('returnAccession').value = '';
-      $('returnPreview').classList.add('hidden');
+      $('returnAccession').value = ''; $('returnPreview').classList.add('hidden');
       await Promise.all([loadBooks(), updateStats(), loadBookHistory(), loadBorrowing()]);
-    } catch (e) {
-      toast(errText(e), 'error');
-    }
+    } catch (e) { toast(errText(e), 'error'); }
   }
 
   function suggestAccess(categoryId) {
@@ -464,6 +401,50 @@
       const r = await sb.from('books').insert(payload); if (r.error) throw r.error;
       toast('Book added successfully.'); ['addName','addAuthor','addCupboard','addAccess'].forEach(id=>$(id).value=''); $('addCategory').value=''; await loadBooks(); await updateStats();
     } catch(e){toast(errText(e),'error');}
+  }
+
+  const BOOK_IMPORT_REQUIRED = ['book_name','author_name','category','cupboard_no','access_no'];
+  function cleanImportHeader(v){return String(v??'').trim().toLowerCase().replace(/\s+/g,'_');}
+  function importValue(v){return v===undefined||v===null?'':String(v).trim();}
+  function renderBookImportPreview(rows,errors=[]){
+    const box=$('bookImportPreview');if(!box)return;
+    box.classList.remove('hidden');
+    if(errors.length){box.innerHTML=`<div class="import-error"><strong>Upload rejected</strong><ul>${errors.slice(0,20).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;return;}
+    const shown=rows.slice(0,12);
+    box.innerHTML=`<div class="import-preview-head"><div><strong>${rows.length} book${rows.length===1?'':'s'} ready to upload</strong><small>Category is read from the Excel/CSV file. category_id is filled automatically from the category name. All new books are added as Available; ID, created_at, updated_at and availability are generated automatically.</small></div><button id="confirmBookImport" class="btn primary">Upload ${rows.length} Books</button></div><div class="table-wrap import-preview-table"><table class="data-table"><thead><tr><th>Book Name</th><th>Author</th><th>Category</th><th>Cupboard</th><th>Category ID</th><th>Access No.</th></tr></thead><tbody>${shown.map(r=>`<tr><td>${esc(r.book_name)}</td><td>${esc(r.author_name)}</td><td>${esc(r.category)}</td><td>${esc(r.cupboard_no)}</td><td>${esc(r.category_id)}</td><td><code>${esc(r.access_no)}</code></td></tr>`).join('')}</tbody></table></div>${rows.length>shown.length?`<small class="hint">Showing first ${shown.length} rows of ${rows.length}.</small>`:''}`;
+    bind('confirmBookImport','click',uploadBookImport);
+  }
+  async function previewBookImport(file){
+    if(!file)return;
+    try{
+      if(!window.XLSX)throw new Error('Excel library is still loading. Try again.');
+      if(file.size>10*1024*1024)throw new Error('Excel/CSV file must be 10 MB or smaller.');
+      if(!state.categories.length) await loadCategories();
+      const data=await file.arrayBuffer();const wb=XLSX.read(data,{type:'array'});const sheet=wb.Sheets[wb.SheetNames[0]];if(!sheet)throw new Error('No worksheet found.');
+      const raw=XLSX.utils.sheet_to_json(sheet,{defval:'',raw:false});if(!raw.length)throw new Error('The file contains no book rows.');
+      const originalHeaders=XLSX.utils.sheet_to_json(sheet,{header:1,defval:'',blankrows:false})[0]||[];const headers=originalHeaders.map(cleanImportHeader);const missing=BOOK_IMPORT_REQUIRED.filter(k=>!headers.includes(k));
+      if(missing.length){renderBookImportPreview([],[`Missing required columns: ${missing.join(', ')}`]);return;}
+      const seen=new Set(),errors=[],rows=[];
+      for(let i=0;i<raw.length;i++){
+        const line=i+2,row={};headers.forEach((h,j)=>{row[h]=importValue(raw[i][originalHeaders[j]]);});
+        for(const k of BOOK_IMPORT_REQUIRED)if(!row[k])errors.push(`Row ${line}: ${k} cannot be empty.`);
+        const access=row.access_no;
+        if(access){const key=access.toLowerCase();if(seen.has(key))errors.push(`Row ${line}: duplicate access_no ${access} in this file.`);seen.add(key);if(state.books.some(b=>String(b.access_no||'').toLowerCase()===key))errors.push(`Row ${line}: access_no ${access} already exists.`);}
+        const cat=state.categories.find(c=>String(c.name||'').trim().toLowerCase()===String(row.category||'').trim().toLowerCase());
+        if(!cat) errors.push(`Row ${line}: category "${row.category}" was not found in MatLib categories.`);
+        rows.push({book_name:row.book_name,author_name:row.author_name,cupboard_no:row.cupboard_no,access_no:row.access_no,category:cat?.name||row.category,category_id:cat?Number(cat.id):null});
+      }
+      state.bookImportRows=errors.length?[]:rows;
+      renderBookImportPreview(rows,errors);
+    }catch(e){console.error(e);toast(errText(e),'error');}
+  }
+  async function uploadBookImport(){
+    const rows=state.bookImportRows||[];if(!rows.length)return toast('No validated books to upload.','error');
+    try{
+      const now=new Date().toISOString();const payload=rows.map(r=>({...r,status:'available',availability:1,created_at:now,updated_at:now}));
+      const r=await sb.from('books').insert(payload);if(r.error)throw r.error;
+      toast(`${rows.length} books added successfully as Available.`);state.bookImportRows=[];$('bookImportPreview')?.classList.add('hidden');$('bookImportFile').value='';await loadBooks();await updateStats();
+    }catch(e){toast(errText(e),'error');}
   }
 
   async function prepareEdit(){if(!state.categories.length) await loadCategories();}
@@ -500,7 +481,7 @@
   function closeDrawer(){$('drawer').classList.remove('open');$('drawerBackdrop').classList.remove('show');}
 
   async function loadBookRequests(){
-    const r=await sb.from('book_requests').select('id,book_id,faculty_id,requested_at,notes,status').eq('status','pending').order('requested_at',{ascending:false});if(r.error)throw r.error;const rows=r.data||[];setText('bookReqCount',rows.length);const bids=[...new Set(rows.map(x=>x.book_id))],fids=[...new Set(rows.map(x=>x.faculty_id))];const [br,fr]=await Promise.all([bids.length?sb.from('books').select('id,book_name,access_no').in('id',bids):Promise.resolve({data:[]}),fids.length?sb.from('faculty_profiles').select('id,name,faculty_id,email').in('id',fids):Promise.resolve({data:[]})]);
+    const r=await sb.from('book_requests').select('id,book_id,faculty_id,requested_at,notes,status').eq('status','pending').order('requested_at',{ascending:false});if(r.error)throw r.error;const rows=r.data||[];setText('bookReqCount',rows.length);$('bookReqCount')?.classList.toggle('hidden',rows.length===0);const bids=[...new Set(rows.map(x=>x.book_id))],fids=[...new Set(rows.map(x=>x.faculty_id))];const [br,fr]=await Promise.all([bids.length?sb.from('books').select('id,book_name,access_no').in('id',bids):Promise.resolve({data:[]}),fids.length?sb.from('faculty_profiles').select('id,name,faculty_id,email').in('id',fids):Promise.resolve({data:[]})]);
     $('bookReqBody').innerHTML=rows.length?rows.map(x=>{const b=(br.data||[]).find(v=>v.id===x.book_id),f=(fr.data||[]).find(v=>v.id===x.faculty_id);return `<tr><td><strong>${esc(b?.book_name||'Unknown')}</strong><small>${esc(b?.access_no||'')}</small></td><td>${esc(f?.name||'Unknown')}<small>${esc(f?.faculty_id||'')}</small></td><td>${dt(x.requested_at)}</td><td>${esc(x.notes||'—')}</td><td><div class="actions"><button type="button" class="btn success tiny" data-approve-book="${x.id}">Approve</button><button type="button" class="btn danger tiny" data-reject-book="${x.id}">Reject</button></div></td></tr>`}).join(''):'<tr><td colspan="5" class="empty">No active book requests.</td></tr>';
   }
   async function approveBookRequest(id){
@@ -519,7 +500,7 @@
   }
   async function rejectBookRequest(id){try{const reason=prompt('Reason for rejection:');if(!reason?.trim())return;const primary=await sb.rpc('reject_book_request',{p_request_id:Number(id),p_reason:reason.trim()});if(primary.error){const now=new Date().toISOString();const update=await sb.from('book_requests').update({status:'rejected',decided_at:now,decided_by:state.admin?.id||null,rejection_reason:reason.trim(),processed_at:now,processed_by:state.admin?.id||null}).eq('id',Number(id)).eq('status','pending');if(update.error)throw new Error(`${primary.error.message||'Rejection RPC failed'}\nFallback update failed: ${update.error.message||update.error}`);}toast('Book request rejected.');await Promise.all([loadBookRequests(),loadBookRejections(),updateStats()]);}catch(e){toast(errText(e),'error');}}
   async function loadReturnRequests(){
-    const r=await sb.from('return_requests').select('id,borrow_id,faculty_id,requested_at,status').eq('status','pending').order('requested_at',{ascending:false});if(r.error)throw r.error;const rows=r.data||[];setText('returnReqCount',rows.length);const bids=[...new Set(rows.map(x=>x.borrow_id))],fids=[...new Set(rows.map(x=>x.faculty_id))];const [br,fr]=await Promise.all([bids.length?sb.from('borrow_records').select('id,book_id,student_name,student_roll_no').in('id',bids):Promise.resolve({data:[]}),fids.length?sb.from('faculty_profiles').select('id,name,faculty_id').in('id',fids):Promise.resolve({data:[]})]);const bookIds=[...new Set((br.data||[]).map(x=>x.book_id))];const booksR=bookIds.length?await sb.from('books').select('id,book_name,access_no').in('id',bookIds):{data:[]};
+    const r=await sb.from('return_requests').select('id,borrow_id,faculty_id,requested_at,status').eq('status','pending').order('requested_at',{ascending:false});if(r.error)throw r.error;const rows=r.data||[];setText('returnReqCount',rows.length);$('returnReqCount')?.classList.toggle('hidden',rows.length===0);const bids=[...new Set(rows.map(x=>x.borrow_id))],fids=[...new Set(rows.map(x=>x.faculty_id))];const [br,fr]=await Promise.all([bids.length?sb.from('borrow_records').select('id,book_id,student_name,student_roll_no').in('id',bids):Promise.resolve({data:[]}),fids.length?sb.from('faculty_profiles').select('id,name,faculty_id').in('id',fids):Promise.resolve({data:[]})]);const bookIds=[...new Set((br.data||[]).map(x=>x.book_id))];const booksR=bookIds.length?await sb.from('books').select('id,book_name,access_no').in('id',bookIds):{data:[]};
     $('returnReqBody').innerHTML=rows.length?rows.map(x=>{const brr=(br.data||[]).find(v=>v.id===x.borrow_id),b=(booksR.data||[]).find(v=>v.id===brr?.book_id),f=(fr.data||[]).find(v=>v.id===x.faculty_id);return `<tr><td><strong>${esc(b?.book_name||'Unknown')}</strong><small>${esc(b?.access_no||'')}</small></td><td>${esc(f?.name||brr?.student_name||'Unknown')}</td><td>${dt(x.requested_at)}</td><td><div class="actions"><button type="button" class="btn success tiny" data-approve-return="${x.id}">Approve</button><button type="button" class="btn danger tiny" data-reject-return="${x.id}">Reject</button></div></td></tr>`}).join(''):'<tr><td colspan="4" class="empty">No active return requests.</td></tr>';
   }
   async function approveReturnRequest(id){
@@ -612,15 +593,15 @@
   }
   async function rejectReturnRequest(id){try{const reason=prompt('Reason for rejection:');if(!reason?.trim())return;const primary=await sb.rpc('reject_return_request',{p_request_id:Number(id),p_reason:reason.trim()});if(primary.error){const now=new Date().toISOString();const update=await sb.from('return_requests').update({status:'rejected',decided_at:now,decided_by:state.admin?.id||null,rejection_reason:reason.trim(),processed_at:now,processed_by:state.admin?.id||null}).eq('id',Number(id)).eq('status','pending');if(update.error)throw new Error(`${primary.error.message||'Rejection RPC failed'}\nFallback update failed: ${update.error.message||update.error}`);}toast('Return request rejected.');await Promise.all([loadReturnRequests(),loadBookRejections(),updateStats()]);}catch(e){toast(errText(e),'error');}}
 
-  async function loadFacultyRequests(){const r=await sb.from('faculty_profiles').select('id,name,faculty_id,designation,email,created_at,approval_status,is_active').eq('approval_status','pending').order('created_at',{ascending:false});if(r.error)throw r.error;const rows=r.data||[];setText('facultyCount',rows.length);$('facultyBody').innerHTML=rows.length?rows.map(x=>`<tr><td>${esc(x.name)}</td><td><code>${esc(x.faculty_id)}</code></td><td>${esc(x.designation||'—')}</td><td>${esc(x.email)}</td><td><div class="actions"><button type="button" class="btn success tiny" data-approve-faculty="${x.id}">Approve</button><button type="button" class="btn danger tiny" data-reject-faculty="${x.id}">Reject</button></div></td></tr>`).join(''):'<tr><td colspan="5" class="empty">No active faculty requests.</td></tr>';}
-  async function approveFaculty(id){try{const r=await sb.rpc('approve_faculty',{p_faculty_id:id});if(r.error)throw r.error;toast('Faculty approved.');await Promise.all([loadFacultyRequests(),loadFacultyData(),loadFacultyHistory()]);}catch(e){toast(errText(e),'error');}}
+  async function loadFacultyRequests(){const r=await sb.from('faculty_profiles').select('id,name,faculty_id,designation,email,created_at,approval_status,is_active').eq('approval_status','pending').order('created_at',{ascending:false});if(r.error)throw r.error;const rows=r.data||[];setText('facultyCount',rows.length);$('facultyCount')?.classList.toggle('hidden',rows.length===0);$('facultyBody').innerHTML=rows.length?rows.map(x=>`<tr><td>${esc(x.name)}</td><td><code>${esc(x.faculty_id)}</code></td><td>${esc(x.designation||'—')}</td><td>${esc(x.email)}</td><td><div class="actions"><button type="button" class="btn success tiny" data-approve-faculty="${x.id}">Approve</button><button type="button" class="btn danger tiny" data-reject-faculty="${x.id}">Reject</button></div></td></tr>`).join(''):'<tr><td colspan="5" class="empty">No active faculty requests.</td></tr>';}
+  async function approveFaculty(id){try{const r=await sb.rpc('approve_faculty',{p_faculty_id:id});if(r.error)throw r.error;const fr=await sb.from('faculty_profiles').select('id,name,faculty_id,email').eq('id',id).maybeSingle();if(fr.error)throw fr.error;let emailWarning='';if(fr.data?.email){const loginUrl=new URL('/MatLib/faculty.html',window.location.origin).href;const mail=await sb.functions.invoke('send-faculty-approval-email',{body:{faculty_id:id,name:fr.data.name,email:fr.data.email,login_url:loginUrl}});if(mail.error)emailWarning=' Faculty approval succeeded, but the login email could not be sent.';}toast(emailWarning||'Faculty approved and login email sent.');await Promise.all([loadFacultyRequests(),loadFacultyData(),loadFacultyHistory(),loadCalendar(),updateStats()]);}catch(e){toast(errText(e),'error');}}
   async function rejectFaculty(id){try{const reason=prompt('Reason for rejection:');if(!reason)return;const r=await sb.rpc('reject_faculty',{p_faculty_id:id,p_reason:reason});if(r.error)throw r.error;toast('Faculty request rejected.');await Promise.all([loadFacultyRequests(),loadFacultyRejections()]);}catch(e){toast(errText(e),'error');}}
 
   async function enrichBorrow(rows){
     if(!rows.length)return [];
     const bids=[...new Set(rows.map(x=>x.book_id))],fids=[...new Set(rows.map(x=>x.faculty_id).filter(Boolean))];
     const [br,fr]=await Promise.all([sb.from('books').select('id,book_name,author_name,category,category_id,access_no').in('id',bids),fids.length?sb.from('faculty_profiles').select('id,name,faculty_id,email').in('id',fids):Promise.resolve({data:[]})]);
-    return rows.map(r=>{const b=(br.data||[]).find(x=>x.id===r.book_id),f=(fr.data||[]).find(x=>x.id===r.faculty_id);return {...r,book_name:b?.book_name||'Unknown',author_name:b?.author_name||'',category:b?.category||categoryName(b?.category_id)||'',access_no:b?.access_no||'',faculty_name:f?.name||r.student_name||'',faculty_id_text:f?.faculty_id||r.student_roll_no||'',faculty_email:f?.email||''};});
+    return rows.map(r=>{const b=(br.data||[]).find(x=>x.id===r.book_id),f=(fr.data||[]).find(x=>x.id===r.faculty_id);return {...r,book_name:b?.book_name||'Unknown',author_name:b?.author_name||'',category:b?.category||categoryName(b?.category_id)||'',access_no:b?.access_no||'',faculty_name:f?.name||r.student_name||'',faculty_id_text:f?.faculty_id||r.student_roll_no||'',faculty_email:f?.email||r.student_email||''};});
   }
   function filterPast(rows,filters){return rows.filter(r=>{const issued=(r.issued_at||'').slice(0,10);return (!filters.from||issued>=filters.from)&&(!filters.to||issued<=filters.to)&&(!filters.category||String(r.category)===filters.category)&&(!filters.author||String(r.author_name||'').toLowerCase().includes(filters.author.toLowerCase()))&&(!filters.topic||`${r.book_name} ${r.access_no}`.toLowerCase().includes(filters.topic.toLowerCase()))&&String(r.status||'').toLowerCase()!=='issued';});}
   async function fetchPastBorrow(){const r=await sb.from('borrow_records').select('id,book_id,faculty_id,student_name,student_roll_no,issued_at,due_date,returned_at,status,notes').order('issued_at',{ascending:false}).limit(5000);if(r.error)throw r.error;return enrichBorrow(r.data||[]);}
@@ -820,8 +801,512 @@ async function fetchAllBooks() {
   }
 
 /* =========================================================
+   OVERDUE MAIL HISTORY
+   ========================================================= */
+
+async function loadMailHistory(){
+  const body=$('mailHistoryBody');
+  if(!body)return;
+  try{
+    const r=await sb.from('overdue_email_log').select('id,recipient_email,borrow_id,sent_at,sent_by').order('sent_at',{ascending:false}).limit(5000);
+    if(r.error)throw r.error;
+    const rows=r.data||[];
+    const emails=[...new Set(rows.map(x=>x.recipient_email).filter(Boolean))];
+    const borrowIds=[...new Set(rows.map(x=>x.borrow_id).filter(Boolean))];
+    const [fr,br]=await Promise.all([
+      emails.length?sb.from('faculty_profiles').select('id,name,faculty_id,email').in('email',emails):Promise.resolve({data:[]}),
+      borrowIds.length?sb.from('borrow_records').select('id,book_id').in('id',borrowIds):Promise.resolve({data:[]})
+    ]);
+    if(fr.error)throw fr.error;if(br.error)throw br.error;
+    const bookIds=[...new Set((br.data||[]).map(x=>x.book_id).filter(Boolean))];
+    const books=bookIds.length?await sb.from('books').select('id,book_name,access_no').in('id',bookIds):{data:[]};
+    if(books.error)throw books.error;
+    const fmap=new Map((fr.data||[]).map(x=>[String(x.email).toLowerCase(),x]));
+    const bmap=new Map((br.data||[]).map(x=>[String(x.id),x]));
+    const bkmap=new Map((books.data||[]).map(x=>[String(x.id),x]));
+    const q=String($('mailHistorySearch')?.value||'').trim().toLowerCase();
+    const filtered=rows.filter(x=>{const f=fmap.get(String(x.recipient_email||'').toLowerCase());const b=bmap.get(String(x.borrow_id));const book=bkmap.get(String(b?.book_id));return !q||`${f?.name||''} ${f?.faculty_id||''} ${x.recipient_email||''} ${book?.book_name||''} ${book?.access_no||''}`.toLowerCase().includes(q);});
+    body.innerHTML=filtered.length?filtered.map(x=>{const f=fmap.get(String(x.recipient_email||'').toLowerCase());const b=bmap.get(String(x.borrow_id));const book=bkmap.get(String(b?.book_id));return `<tr><td>${esc(f?.name||'—')}</td><td>${esc(x.recipient_email||'—')}</td><td><strong>${esc(book?.book_name||'—')}</strong><small>${esc(book?.access_no||'')}</small></td><td>${dt(x.sent_at)}</td><td><code>#${esc(String(x.id))}</code></td><td><button type="button" class="btn danger tiny" data-delete-mail-history="${esc(String(x.id))}">Delete</button></td></tr>`;}).join(''):'<tr><td colspan="6" class="empty">No mail history found.</td></tr>';
+  }catch(e){console.error('MAIL HISTORY:',e);toast(errText(e),'error');}
+}
+
+async function deleteMailHistory(id){
+  try{if(!confirm('Delete this mail history record?'))return;const r=await sb.rpc('admin_delete_overdue_email_log',{p_log_id:Number(id)});if(r.error)throw r.error;toast('Mail history deleted.','success');await loadMailHistory();}catch(e){toast(errText(e),'error');}
+}
+
+/* =========================================================
    OVERDUE BOOKS
    ========================================================= */
+
+   async function deleteOverdueEmailLog(id) {
+  try {
+
+    if (!id) {
+      return;
+    }
+
+
+    const confirmed =
+      confirm(
+        "Delete this mail history record?"
+      );
+
+
+    if (!confirmed) {
+      return;
+    }
+
+
+    const {
+      error
+    } = await sb
+      .from("overdue_email_log")
+      .delete()
+      .eq("id", id);
+
+
+    if (error) {
+      console.error(
+        "Delete overdue email log:",
+        error
+      );
+
+      throw error;
+    }
+
+
+    toast(
+      "Mail history deleted.",
+      "success"
+    );
+
+
+    await loadOverdueEmailHistory();
+
+
+  } catch (error) {
+
+    console.error(
+      "deleteOverdueEmailLog:",
+      error
+    );
+
+    toast(
+      error?.message ||
+      "Unable to delete mail history.",
+      "error"
+    );
+
+  }
+}
+async function loadOverdueEmailHistory() {
+  try {
+
+    const table = document.getElementById("overdueEmailHistoryBody");
+
+    if (!table) {
+      console.warn("overdueEmailHistoryBody not found");
+      return;
+    }
+
+    table.innerHTML = `
+      <tr>
+        <td colspan="6" class="empty">
+          Loading mail history...
+        </td>
+      </tr>
+    `;
+
+
+    const { data, error } = await sb
+      .from("overdue_email_log")
+      .select(`
+        id,
+        recipient_email,
+        borrow_id,
+        sent_at,
+        sent_by
+      `)
+      .order("sent_at", {
+        ascending: false
+      })
+      .limit(1000);
+
+
+    if (error) {
+      console.error(
+        "Overdue email history error:",
+        error
+      );
+
+      throw error;
+    }
+
+
+    if (!data || data.length === 0) {
+
+      table.innerHTML = `
+        <tr>
+          <td colspan="6" class="empty">
+            No overdue reminder emails have been sent yet.
+          </td>
+        </tr>
+      `;
+
+      return;
+    }
+
+
+    /*
+     * Get borrow IDs
+     */
+    const borrowIds = [
+      ...new Set(
+        data
+          .map(x => x.borrow_id)
+          .filter(Boolean)
+      )
+    ];
+
+
+    let borrowMap = new Map();
+
+
+    if (borrowIds.length > 0) {
+
+      const {
+        data: borrows,
+        error: borrowError
+      } = await sb
+        .from("borrow_records")
+        .select(`
+          id,
+          book_id,
+          faculty_id
+        `)
+        .in("id", borrowIds);
+
+
+      if (borrowError) {
+        console.warn(
+          "Borrow history lookup failed:",
+          borrowError
+        );
+      }
+
+
+      if (borrows) {
+
+        borrowMap = new Map(
+          borrows.map(row => [
+            String(row.id),
+            row
+          ])
+        );
+
+      }
+    }
+
+
+    /*
+     * Faculty IDs
+     */
+    const facultyIds = [
+      ...new Set(
+        data
+          .map(row => {
+            const borrow =
+              borrowMap.get(
+                String(row.borrow_id)
+              );
+
+            return borrow?.faculty_id;
+          })
+          .filter(Boolean)
+      )
+    ];
+
+
+    let facultyMap = new Map();
+
+
+    if (facultyIds.length > 0) {
+
+      const {
+        data: faculties,
+        error: facultyError
+      } = await sb
+        .from("faculty_profiles")
+        .select(`
+          id,
+          name,
+          faculty_id,
+          email
+        `)
+        .in("id", facultyIds);
+
+
+      if (facultyError) {
+        console.warn(
+          "Faculty history lookup failed:",
+          facultyError
+        );
+      }
+
+
+      if (faculties) {
+
+        facultyMap = new Map(
+          faculties.map(row => [
+            String(row.id),
+            row
+          ])
+        );
+
+      }
+    }
+
+
+    /*
+     * Book IDs
+     */
+    const bookIds = [
+      ...new Set(
+        [...borrowMap.values()]
+          .map(row => row.book_id)
+          .filter(Boolean)
+      )
+    ];
+
+
+    let bookMap = new Map();
+
+
+    if (bookIds.length > 0) {
+
+      const {
+        data: books,
+        error: bookError
+      } = await sb
+        .from("books")
+        .select(`
+          id,
+          book_name,
+          access_no
+        `)
+        .in("id", bookIds);
+
+
+      if (bookError) {
+        console.warn(
+          "Book history lookup failed:",
+          bookError
+        );
+      }
+
+
+      if (books) {
+
+        bookMap = new Map(
+          books.map(row => [
+            String(row.id),
+            row
+          ])
+        );
+
+      }
+    }
+
+
+    const searchInput =
+      document.getElementById(
+        "mailHistorySearch"
+      );
+
+
+    const search =
+      String(
+        searchInput?.value || ""
+      )
+        .trim()
+        .toLowerCase();
+
+
+    const filtered =
+      data.filter(row => {
+
+        const borrow =
+          borrowMap.get(
+            String(row.borrow_id)
+          );
+
+        const faculty =
+          borrow
+            ? facultyMap.get(
+                String(borrow.faculty_id)
+              )
+            : null;
+
+        const book =
+          borrow
+            ? bookMap.get(
+                String(borrow.book_id)
+              )
+            : null;
+
+
+        const text = [
+          faculty?.name,
+          faculty?.faculty_id,
+          faculty?.email,
+          row.recipient_email,
+          book?.book_name,
+          book?.access_no,
+          row.borrow_id,
+          row.id
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+
+        return !search ||
+          text.includes(search);
+
+      });
+
+
+    table.innerHTML =
+      filtered.length
+        ? filtered.map(row => {
+
+            const borrow =
+              borrowMap.get(
+                String(row.borrow_id)
+              );
+
+            const faculty =
+              borrow
+                ? facultyMap.get(
+                    String(borrow.faculty_id)
+                  )
+                : null;
+
+            const book =
+              borrow
+                ? bookMap.get(
+                    String(borrow.book_id)
+                  )
+                : null;
+
+
+            const sentAt =
+              row.sent_at
+                ? new Date(
+                    row.sent_at
+                  ).toLocaleString(
+                    "en-IN"
+                  )
+                : "—";
+
+
+            return `
+              <tr>
+
+                <td>
+                  <strong>
+                    ${escapeHTML(
+                      faculty?.name ||
+                      "Faculty"
+                    )}
+                  </strong>
+                </td>
+
+
+                <td>
+                  ${escapeHTML(
+                    row.recipient_email ||
+                    faculty?.email ||
+                    "—"
+                  )}
+                </td>
+
+
+                <td>
+                  <strong>
+                    ${escapeHTML(
+                      book?.book_name ||
+                      "Overdue Book"
+                    )}
+                  </strong>
+
+                  ${
+                    book?.access_no
+                      ? `
+                        <small>
+                          ${escapeHTML(
+                            book.access_no
+                          )}
+                        </small>
+                      `
+                      : ""
+                  }
+                </td>
+
+
+                <td>
+                  ${escapeHTML(
+                    sentAt
+                  )}
+                </td>
+
+
+                <td>
+                  ${escapeHTML(
+                    String(row.id)
+                  )}
+                </td>
+
+
+                <td>
+                  <button
+                    type="button"
+                    class="btn secondary tiny"
+                    data-delete-overdue-log="${row.id}"
+                  >
+                    Delete
+                  </button>
+                </td>
+
+              </tr>
+            `;
+
+          }).join("")
+
+        : `
+          <tr>
+            <td colspan="6" class="empty">
+              No matching mail history.
+            </td>
+          </tr>
+        `;
+
+
+  } catch (error) {
+
+    console.error(
+      "loadOverdueEmailHistory:",
+      error
+    );
+
+    toast(
+      error?.message ||
+      "Unable to load mail history.",
+      "error"
+    );
+
+  }
+}
 
 async function loadOverdue() {
   try {
@@ -843,9 +1328,22 @@ async function loadOverdue() {
       throw r.error;
     }
 
+    const totalOverdueRows = r.data || [];
     let rows = await enrichBorrow(
-      r.data || []
+      totalOverdueRows
     );
+    setText("overdueCount", totalOverdueRows.length);
+    $('overdueCount')?.closest('.nav-item')?.classList.toggle('hidden', totalOverdueRows.length===0);
+    if(rows.some(x=>!x.faculty_name || !x.faculty_email || x.faculty_name==='—')){
+      const fr=await sb.from('faculty_profiles').select('id,name,faculty_id,email');
+      if(!fr.error){
+        const allFac=fr.data||[];
+        rows=rows.map(x=>{
+          const f=allFac.find(v=>String(v.id)===String(x.faculty_id) || String(v.faculty_id)===String(x.faculty_id_text) || String(v.faculty_id)===String(x.student_roll_no));
+          return f?{...x,faculty_name:f.name||x.faculty_name,faculty_id_text:f.faculty_id||x.faculty_id_text,faculty_email:f.email||x.faculty_email}:x;
+        });
+      }
+    }
 
     /* ---------------------------------------------
        Search
@@ -877,7 +1375,7 @@ async function loadOverdue() {
 
     setText(
       "sOverdue",
-      rows.length
+      totalOverdueRows.length
     );
 
     /* ---------------------------------------------
@@ -885,7 +1383,6 @@ async function loadOverdue() {
        --------------------------------------------- */
 
     const body = $("overdueBody");
-
     if (!body) {
       console.warn(
         "overdueBody element not found."
@@ -976,15 +1473,7 @@ async function loadOverdue() {
             </td>
 
             <td>
-              <button
-                type="button"
-                class="btn secondary tiny"
-                data-overdue="${esc(
-                  String(x.id)
-                )}"
-              >
-                ✉ Mail
-              </button>
+              <button type="button" class="btn secondary tiny" data-overdue="${esc(String(x.id))}" title="Send overdue email">✉ Mail</button>
             </td>
 
           </tr>
@@ -1197,26 +1686,6 @@ async function sendOverdueMail(id) {
       r.data.success !== true
     ) {
 
-      /*
-        Handle cooldown response if
-        the Edge Function sends one.
-      */
-
-      if (
-        r.data.reason ===
-        "cooldown"
-      ) {
-
-        toast(
-          r.data.message ||
-          "Reminder already sent recently.",
-          "error"
-        );
-
-        return;
-      }
-
-
       throw new Error(
         r.data.message ||
         "Unable to send overdue reminder."
@@ -1235,6 +1704,9 @@ async function sendOverdueMail(id) {
     console.log(
       "OVERDUE EMAIL SENT SUCCESSFULLY"
     );
+
+    await loadOverdue();
+    toast(`Reminder sent to ${r.data.recipient || 'faculty'}.`);
 
     console.log(
       "Recipient:",
@@ -1295,6 +1767,29 @@ async function sendOverdueMail(id) {
     );
   }
 }
+  function setDriveView(view){state.driveView=view;const grid=$('driveGrid');if(grid)grid.classList.toggle('drive-list-view',view==='list');document.querySelectorAll('.drive-view-btn').forEach(b=>b.classList.toggle('active',b.id===`drive${view==='grid'?'Grid':'List'}View`));renderDrive();}
+  async function createDriveFolderAdmin(){
+    try{
+      const cur=currentDrive();
+      if(!cur){toast('Open a Drive root before creating a folder.','error');return;}
+      const name=prompt('Folder name:','New Folder')?.trim();if(!name)return;
+      const rootId=cur.type==='root'?cur.id:cur.root_folder_id;
+      const parentFolderId=cur.type==='folder'?cur.id:'';
+      await driveManager('create_folder',{root_id:Number(rootId),parent_folder_id:parentFolderId,name});
+      toast('Folder created successfully.');await loadDocuments();
+    }catch(e){toast(errText(e),'error');}
+  }
+  function uploadDriveFileAdmin(){
+    const cur=currentDrive();if(!cur){toast('Open a Drive root before uploading a file.','error');return;}
+    const input=$('driveUploadInput');if(!input)return;input.value='';input.click();
+  }
+  async function handleDriveUploadAdmin(file){
+    if(!file)return;try{
+      const cur=currentDrive();const rootId=cur.type==='root'?cur.id:cur.root_folder_id;const folderId=cur.type==='folder'?cur.id:'';
+      await driveManager('upload_file',{root_id:Number(rootId),folder_id:folderId},file);toast('File uploaded successfully.');await loadDocuments();
+    }catch(e){toast(errText(e),'error');}
+  }
+
   async function loadDocuments(){
     try {
       const [a,b,c]=await Promise.all([
@@ -1339,7 +1834,7 @@ async function sendOverdueMail(id) {
     $('driveBreadcrumb').innerHTML=`<button data-drive-home>My Drive</button>`+(cur?`<span>›</span><button data-drive-crumb="0">${esc(cur.type==='root'?cur.name:state.drive.roots.find(r=>String(r.id)===String(cur.root_folder_id))?.name||'Root')}</button>`:'')+state.drive.path.slice(cur?.type==='root'?1:1).map((p,i)=>`<span>›</span><button data-drive-crumb="${i+1}">${esc(p.name)}</button>`).join('');
     let html=folders.map(x=>`<div class="drive-item folder"><button class="drive-open-area" data-drive-open="${x._type}:${x.id}"><div class="drive-icon">▰</div><div class="drive-main"><strong>${esc(x.name)}</strong><small>Folder · ${esc(x.person?.name||'Unknown')} · ${fmt(x.created_at)}</small></div></button><button class="drive-menu-btn" data-drive-actions="folder:${x.id}" title="Folder actions">⋮</button></div>`).join('');
     html+=files.map(x=>`<div class="drive-item file"><button class="drive-open-area" data-drive-file="${x.id}"><div class="drive-icon">${String(x.mime_type||'').includes('pdf')?'PDF':'▤'}</div><div class="drive-main"><strong>${esc(x.name)}</strong><small>${esc(x.mime_type||'File')} · ${esc(x.person?.name||'Unknown')} · ${dt(x.created_at)}</small></div></button><button class="drive-menu-btn" data-drive-actions="file:${x.id}" title="File actions">⋮</button></div>`).join('');
-    $('driveGrid').innerHTML=html;const empty=!folders.length&&!files.length;$('driveEmpty').classList.toggle('hidden',!empty);
+    $('driveGrid').classList.toggle('drive-list-view',state.driveView==='list');$('driveGrid').innerHTML=html;const empty=!folders.length&&!files.length;$('driveEmpty').classList.toggle('hidden',!empty);
   }
   function openDriveItem(token){const [type,id]=token.split(':');if(type==='root'){const r=state.drive.roots.find(x=>String(x.id)===id);if(r)state.drive.path=[{...r,type:'root'}];}else{const f=state.drive.folders.find(x=>String(x.id)===id);if(f)state.drive.path=[...state.drive.path,{...f,type:'folder'}];}renderDrive();}
 
@@ -1365,7 +1860,7 @@ async function sendOverdueMail(id) {
   async function moveDriveItem(targetToken){try{const [type,id]=state.driveMoveItem.split(':');const [tt,tid]=targetToken.split(':');if(type==='file'){const f=state.drive.files.find(x=>String(x.id)===id);if(!f)return;let rootId,folderDriveId='';if(tt==='root'){const r=state.drive.roots.find(x=>String(x.id)===tid);rootId=r?.id;folderDriveId=r?.drive_folder_id;}else{const folder=state.drive.folders.find(x=>String(x.id)===tid);rootId=folder?.root_folder_id;folderDriveId=folder?.drive_folder_id;}if(!rootId||!folderDriveId)return;await driveManager('move_file',{file_id:Number(id),target_root_id:Number(rootId),target_folder_drive_id:folderDriveId});}else{const folder=state.drive.folders.find(x=>String(x.id)===id);if(!folder)return;let rootId,parentDriveId='';if(tt==='root'){const r=state.drive.roots.find(x=>String(x.id)===tid);rootId=r?.id;parentDriveId=r?.drive_folder_id;}else{const p=state.drive.folders.find(x=>String(x.id)===tid);rootId=p?.root_folder_id;parentDriveId=p?.drive_folder_id;}if(!rootId||!parentDriveId)return;await driveManager('move_folder',{folder_id:Number(id),target_root_id:Number(rootId),target_parent_drive_id:parentDriveId});}closeMoveModal();toast('Moved successfully.');await loadDocuments();}catch(e){toast(errText(e),'error');}}
   function closeMoveModal(){$('moveDriveModal')?.classList.remove('open');state.driveMoveItem=null;}
 
-  function updateStats(){const today=isoToday();return Promise.all([sb.from('books').select('id',{count:'exact',head:true}),sb.from('book_requests').select('id',{count:'exact',head:true}).eq('status','pending'),sb.from('borrow_records').select('id',{count:'exact',head:true}).eq('status','Issued'),sb.from('return_requests').select('id',{count:'exact',head:true}).eq('status','pending'),sb.from('faculty_profiles').select('id',{count:'exact',head:true}).eq('approval_status','pending'),sb.from('borrow_records').select('id',{count:'exact',head:true}).eq('status','Issued').is('returned_at',null).lt('due_date',today)]).then(([b,br,bo,rr,fr,od])=>{setText('sBooks',b.count||0);setText('bookCount',(b.count||0).toLocaleString('en-IN'));setText('sReq',br.count||0);setText('sIssued',bo.count||0);setText('bookReqCount',br.count||0);setText('returnReqCount',rr.count||0);setText('facultyCount',fr.count||0);setText('sOverdue',od.count||0);setText('overdueCount',od.count||0);renderNotifications();});}
+  function updateStats(){const today=isoToday();return Promise.all([sb.from('books').select('id',{count:'exact',head:true}),sb.from('book_requests').select('id',{count:'exact',head:true}).eq('status','pending'),sb.from('borrow_records').select('id',{count:'exact',head:true}).eq('status','Issued'),sb.from('return_requests').select('id',{count:'exact',head:true}).eq('status','pending'),sb.from('faculty_profiles').select('id',{count:'exact',head:true}).eq('approval_status','pending'),sb.from('borrow_records').select('id',{count:'exact',head:true}).eq('status','Issued').is('returned_at',null).lt('due_date',today)]).then(([b,br,bo,rr,fr,od])=>{const counts={bookRequests:Number(br.count||0),returnRequests:Number(rr.count||0),facultyRequests:Number(fr.count||0),overdue:Number(od.count||0)};setText('sBooks',b.count||0);setText('bookCount',(b.count||0).toLocaleString('en-IN'));setText('sReq',counts.bookRequests);setText('sIssued',bo.count||0);setText('bookReqCount',counts.bookRequests);$('bookReqCount')?.classList.toggle('hidden',counts.bookRequests===0);setText('returnReqCount',counts.returnRequests);$('returnReqCount')?.classList.toggle('hidden',counts.returnRequests===0);setText('facultyCount',counts.facultyRequests);$('facultyCount')?.classList.toggle('hidden',counts.facultyRequests===0);setText('sOverdue',counts.overdue);setText('overdueCount',counts.overdue);$('sReq')?.closest('.stat-card')?.classList.toggle('hidden',counts.bookRequests===0);$('overdueCount')?.closest('.nav-item')?.classList.toggle('hidden',counts.overdue===0);renderNotifications();});}
 
   let pendingExport=null;
   function normalizeExportRows(rows){return (rows||[]).map(r=>{const o={};Object.entries(r||{}).forEach(([k,v])=>{if(Array.isArray(v))o[k]=v.join(', ');else if(v&&typeof v==='object')o[k]=JSON.stringify(v);else o[k]=v??'';});return o;});}
@@ -1413,10 +1908,48 @@ async function sendOverdueMail(id) {
   }
   function applyCalendarFilters(){const q=String($('calendarSearch')?.value||'').toLowerCase();const enabled=[...document.querySelectorAll('[data-calendar-filter]:checked')].map(x=>x.dataset.calendarFilter);state.calendar.filtered=state.calendar.events.filter(e=>(!enabled.length||enabled.includes(e.type))&&(!q||`${e.title} ${e.detail} ${e.type}`.toLowerCase().includes(q)));}
   function renderCalendar(){
-    const box=$('calendarGrid');if(!box)return;const d=state.calendar.month,y=d.getFullYear(),m=d.getMonth(),first=new Date(y,m,1),days=new Date(y,m+1,0).getDate(),start=first.getDay();const by={};state.calendar.filtered.forEach(e=>(by[e.date]??=[]).push(e));
-    setText('calendarMonthTitle',d.toLocaleDateString('en-IN',{month:'long',year:'numeric'}));let html=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=>`<div class="calendar-week-name">${x}</div>`).join('');for(let i=0;i<start;i++)html+='<div class="calendar-cell muted-cell"></div>';for(let day=1;day<=days;day++){const date=`${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`,items=by[date]||[];const types=[...new Set(items.map(x=>x.type))].slice(0,5);html+=`<button type="button" class="calendar-cell ${items.length?'has-calendar-events':''}" data-main-calendar-date="${date}"><strong>${day}</strong><div class="calendar-dots">${types.map(t=>`<i class="event-dot ${esc(t)}"></i>`).join('')}</div><small>${items.length?items.length+' event'+(items.length>1?'s':''):''}</small></button>`;}box.innerHTML=html;renderCalendarAgenda();renderCalendarDay();}
-  function renderCalendarAgenda(){const box=$('calendarAgenda');if(!box)return;const d=state.calendar.month,y=d.getFullYear(),m=d.getMonth(),prefix=`${y}-${String(m+1).padStart(2,'0')}-`;const items=state.calendar.filtered.filter(e=>String(e.date||'').startsWith(prefix)).sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.title).localeCompare(String(b.title)));setText('calendarAgendaTitle',d.toLocaleDateString('en-IN',{month:'long',year:'numeric'}));box.innerHTML=items.length?items.map(e=>`<button type="button" class="agenda-row" data-main-calendar-date="${esc(e.date)}"><span class="event-dot ${esc(e.type)}"></span><span><strong>${esc(e.date)}</strong><small>${esc(e.title)} · ${esc(e.detail)}</small></span></button>`).join(''):'<div class="calendar-day-empty">No events for this month.</div>';}
-  function renderCalendarDay(date){const box=$('calendarDayEvents');if(!box)return;const items=state.calendar.filtered.filter(e=>e.date===date);if(!items.length){box.innerHTML='<div class="calendar-day-empty">Select a date with events to see the activity.</div>';return;}box.innerHTML=`<div class="calendar-day-title">${fmt(date)} · ${items.length} event${items.length>1?'s':''}</div>`+items.map(e=>`<div class="calendar-event-row"><span class="event-dot ${esc(e.type)}"></span><div><strong>${esc(e.title)}</strong><small>${esc(e.detail)} · ${esc(e.type.replaceAll('-',' '))}</small></div></div>`).join('');}
+    const box=$('calendarGrid');if(!box)return;
+    const status=$('calendarSelectionStatus');
+    if(status){const a=state.calendar.selectedStart,b=state.calendar.selectedEnd;status.textContent=a&&b?`Selected: ${fmt(a)} – ${fmt(b)}`:a?`Start selected: ${fmt(a)} · click another date to choose the end`: 'Select a start date, then an end date';}
+    const d=state.calendar.month,y=d.getFullYear(),m=d.getMonth(),first=new Date(y,m,1),days=new Date(y,m+1,0).getDate(),start=first.getDay();
+    const by={};state.calendar.filtered.forEach(e=>(by[e.date]??=[]).push(e));
+    setText('calendarMonthTitle',d.toLocaleDateString('en-IN',{month:'long',year:'numeric'}));
+    let html=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(x=>`<div class="calendar-week-name">${x}</div>`).join('');
+    for(let i=0;i<start;i++)html+='<div class="calendar-cell muted-cell"></div>';
+    const a=state.calendar.selectedStart,b=state.calendar.selectedEnd;
+    for(let day=1;day<=days;day++){
+      const date=`${y}-${String(m+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`,items=by[date]||[];
+      const types=[...new Set(items.map(x=>x.type))].slice(0,5);
+      const selected=a===date||b===date;
+      const inRange=a&&b&&date>=a&&date<=b;
+      html+=`<button type="button" class="calendar-cell ${items.length?'has-calendar-events':''} ${selected?'calendar-selected-day':''} ${inRange?'calendar-in-range':''}" data-main-calendar-date="${date}"><strong>${day}</strong><div class="calendar-dots">${types.map(t=>`<i class="event-dot ${esc(t)}"></i>`).join('')}</div><small>${items.length?items.length+' event'+(items.length>1?'s':''):''}</small></button>`;
+    }
+    box.innerHTML=html;
+    renderCalendarDay();
+  }
+  function renderCalendarDay(){
+    const box=$('calendarDayEvents');if(!box)return;
+    const a=state.calendar.selectedStart,b=state.calendar.selectedEnd;
+    if(!a){box.innerHTML='<div class="calendar-day-empty">Select a date to see its activity.</div>';return;}
+    const end=b||a;
+    const items=state.calendar.filtered.filter(e=>e.date>=a&&e.date<=end).sort((x,y)=>String(x.date).localeCompare(String(y.date))||String(x.title).localeCompare(String(y.title)));
+    const title=b?`${fmt(a)} – ${fmt(b)}`:fmt(a);
+    if(!items.length){box.innerHTML=`<div class="calendar-day-title">${title}</div><div class="calendar-day-empty">No activity for the selected date${b?' range':''}.</div>`;return;}
+    box.innerHTML=`<div class="calendar-day-title">${title} · ${items.length} event${items.length>1?'s':''}</div>`+items.map(e=>`<div class="calendar-event-row"><span class="event-dot ${esc(e.type)}"></span><div><strong>${esc(e.title)}</strong><small>${esc(e.detail)} · ${esc(e.type.replaceAll('-',' '))} · ${esc(e.date)}</small></div></div>`).join('');
+  }
+  function selectCalendarDate(date){
+    const a=state.calendar.selectedStart,b=state.calendar.selectedEnd;
+    if(!a){state.calendar.selectedStart=date;state.calendar.selectedEnd=null;}
+    else if(!b){
+      if(date===a){state.calendar.selectedStart=date;state.calendar.selectedEnd=null;}
+      else if(date<a){state.calendar.selectedStart=date;state.calendar.selectedEnd=a;}
+      else{state.calendar.selectedEnd=date;}
+    }else{
+      state.calendar.selectedStart=date;
+      state.calendar.selectedEnd=null;
+    }
+    renderCalendar();
+  }
 
   function setProfileMessage(text, type=''){
     const e=$('profileMessage');
@@ -1555,17 +2088,17 @@ async function sendOverdueMail(id) {
     bind('refreshAll',async()=>{await updateStats();await loadBooks();await loadCategories();toast('Dashboard refreshed.');});
     bind('issueAccession','input',lookupIssueBook);bind('issueFacultySearch','input',renderFacultySuggestions);bind('issueBtn','click',issueBook);bind('issueDate','change',updateDueDateFromDays);bind('issueDueDays','input',updateDueDateFromDays);
     bind('returnAccession','input',lookupReturn);bind('returnBtn','click',returnBook);bind('deleteBorrowHistoryBtn','click',deleteBorrowHistory);bind('deleteStudentLogsBtn','click',deleteStudentLogs);bind('closeExportChooser','click',closeExportChooser);bind('cancelExportChooser','click',closeExportChooser);bind('confirmExportChooser','click',confirmExport);bind('exportSelectAll','click',()=>$$('[data-export-key]').forEach(x=>x.checked=true));bind('exportSelectNone','click',()=>$$('[data-export-key]').forEach(x=>x.checked=false));
-    bind('activeIssuedSearch','input',loadActiveIssued);bind('activeIssuedCategory','change',loadActiveIssued);bind('activeIssuedSort','change',loadActiveIssued);bind('refreshActiveIssued','click',loadActiveIssued);bind('deleteFacultySearch','input',()=>{renderDeleteFacultyPreview(facultyById($('deleteFacultySearch').value));renderFacultyLookupSuggestions('deleteFacultySearch','deleteFacultySuggestions');});bind('deleteFacultyBtn','click',deleteFaculty);bind('facultyDetailSearch','input',()=>renderFacultyLookupSuggestions('facultyDetailSearch','facultyDetailSuggestions'));bind('searchFacultyBtn','click',()=>loadFacultyDetails($('facultyDetailSearch').value));bind('clearFacultyDetails','click',()=>{$('facultyDetailSearch').value='';$('facultyDetails')?.classList.add('hidden');$('facultyDetailsEmpty')?.classList.remove('hidden');state.facultyDetail=null;state.facultyDetailExport=[];});bind('overdueSearch','input',loadOverdue);
+    bind('activeIssuedSearch','input',loadActiveIssued);bind('activeIssuedCategory','change',loadActiveIssued);bind('activeIssuedSort','change',loadActiveIssued);bind('refreshActiveIssued','click',loadActiveIssued);bind('deleteFacultySearch','input',()=>{renderDeleteFacultyPreview(facultyById($('deleteFacultySearch').value));renderFacultyLookupSuggestions('deleteFacultySearch','deleteFacultySuggestions');});bind('deleteFacultyBtn','click',deleteFaculty);bind('facultyDetailSearch','input',()=>renderFacultyLookupSuggestions('facultyDetailSearch','facultyDetailSuggestions'));bind('searchFacultyBtn','click',()=>loadFacultyDetails($('facultyDetailSearch').value));bind('clearFacultyDetails','click',()=>{$('facultyDetailSearch').value='';$('facultyDetails')?.classList.add('hidden');$('facultyDetailsEmpty')?.classList.remove('hidden');state.facultyDetail=null;state.facultyDetailExport=[];});bind('overdueSearch','input',loadOverdue);bind('mailHistorySearch','input',loadMailHistory);bind('refreshMailHistory','click',loadMailHistory);
     bind('addCategory','change',()=>{$('addAccess').value=$('addCategory').value?suggestAccess($('addCategory').value):'';});bind('addBookBtn','click',addBook);
     bind('editLookupAccess','change',lookupEdit);bind('editLookupAccess','keydown',e=>{if(e.key==='Enter'){e.preventDefault();lookupEdit();}});bind('editSaveBtn','click',saveEdit);bind('deleteAccess','change',lookupDelete);bind('deleteAccess','keydown',e=>{if(e.key==='Enter'){e.preventDefault();lookupDelete();}});bind('deleteConfirmBtn','click',confirmDelete);
     bind('bookSearch','input',()=>{state.bookPage=1;renderBookCatalogue();});bind('bookCategory','change',()=>{state.bookPage=1;renderBookCatalogue();});bind('bookStatus','change',()=>{state.bookPage=1;renderBookCatalogue();});bind('refreshBooks','click',loadBooks);
-    bind('docSearch','input',renderDrive);bind('refreshDocs','click',loadDocuments);
+    bind('docSearch','input',renderDrive);bind('refreshDocs','click',loadDocuments);bind('driveGridView','click',()=>setDriveView('grid'));bind('driveListView','click',()=>setDriveView('list'));bind('newDriveFolder','click',createDriveFolderAdmin);bind('uploadDriveFile','click',uploadDriveFileAdmin);bind('driveUploadInput','change',e=>handleDriveUploadAdmin(e.target.files?.[0]));bind('bookImportBtn','click',()=>$('bookImportFile')?.click());bind('bookImportFile','change',e=>previewBookImport(e.target.files?.[0]));
     bind('loadBookHistory','click',loadBookHistory);bind('clearBookHistory','click',()=>{['bhFrom','bhTo','bhCategory','bhAuthor','bhTopic'].forEach(id=>$(id).value='');loadBookHistory();});
     bind('historyTableBtn','click',()=>{$('historyTableBtn').classList.add('active');$('historyCalendarBtn').classList.remove('active');$('bookHistoryTableWrap').classList.remove('hidden');$('historyCalendar').classList.add('hidden');});bind('historyCalendarBtn','click',()=>{$('historyCalendarBtn').classList.add('active');$('historyTableBtn').classList.remove('active');$('bookHistoryTableWrap').classList.add('hidden');$('historyCalendar').classList.remove('hidden');renderHistoryCalendar(state.filteredHistory);});
     bind('loadBorrowing','click',loadBorrowing);bind('clearBorrowing','click',()=>{['borrowFrom','borrowTo','borrowCategory','borrowAuthor','borrowTopic'].forEach(id=>$(id).value='');loadBorrowing();});
     bind('facultyHistorySearch','input',loadFacultyHistory);bind('refreshStudentLogs','click',loadStudentLogs);bind('studentLogSearch','input',loadStudentLogs);bind('studentDocHistorySearch','input',loadStudentDocumentHistory);
     bind('addCategoryBtn','click',categoryAdd);bind('categoryBrowseSelect','change',renderCategoryBrowse);bind('categoryBrowseSearch','input',renderCategoryBrowse);
-    bind('refreshAnalytics','click',loadAnalytics);bind('refreshCalendar','click',loadCalendar);bind('calendarSearch','input',()=>{applyCalendarFilters();renderCalendar();});bind('prevCalendar','click',()=>{state.calendar.month=new Date(state.calendar.month.getFullYear(),state.calendar.month.getMonth()-1,1);renderCalendar();});bind('nextCalendar','click',()=>{state.calendar.month=new Date(state.calendar.month.getFullYear(),state.calendar.month.getMonth()+1,1);renderCalendar();});bind('todayCalendar','click',()=>{const n=new Date();state.calendar.month=new Date(n.getFullYear(),n.getMonth(),1);renderCalendar();});
+    bind('refreshAnalytics','click',loadAnalytics);bind('refreshCalendar','click',loadCalendar);bind('calendarSearch','input',()=>{applyCalendarFilters();renderCalendar();});bind('prevCalendar','click',()=>{state.calendar.month=new Date(state.calendar.month.getFullYear(),state.calendar.month.getMonth()-1,1);state.calendar.selectedStart=null;state.calendar.selectedEnd=null;renderCalendar();});bind('nextCalendar','click',()=>{state.calendar.month=new Date(state.calendar.month.getFullYear(),state.calendar.month.getMonth()+1,1);state.calendar.selectedStart=null;state.calendar.selectedEnd=null;renderCalendar();});bind('todayCalendar','click',()=>{const n=new Date();state.calendar.month=new Date(n.getFullYear(),n.getMonth(),1);state.calendar.selectedStart=null;state.calendar.selectedEnd=null;renderCalendar();});
     $$('.calendar-filter').forEach(e=>e.addEventListener('change',()=>{applyCalendarFilters();renderCalendar();}));
     bind('analyticsCardFaculty','click',()=>openAnalyticsCard('faculty'));bind('analyticsCardBook','click',()=>openAnalyticsCard('book'));bind('analyticsCardStatus','click',()=>openAnalyticsCard('status'));bind('analyticsCardCategory','click',()=>openAnalyticsCard('category'));bind('closeAnalyticsModal','click',closeAnalyticsModal);bind('downloadAnalyticsPNG','click',()=>{if(state.analyticsChart){const a=document.createElement('a');a.href=state.analyticsChart.toBase64Image();a.download='matlib-analytics.png';a.click();}});
     bind('closeInfoModal','click',closeInfoModal);bind('closeMoveDriveModal','click',closeMoveModal);
@@ -1607,7 +2140,7 @@ async function sendOverdueMail(id) {
         const dm=e.target.closest('[data-drive-move]');if(dm){openMoveModal(dm.dataset.driveMove);return;}
         const del=e.target.closest('[data-drive-delete]');if(del){const [type,id]=del.dataset.driveDelete.split(':');await driveDelete(type,id);return;}
         const mt=e.target.closest('[data-move-target]');if(mt){await moveDriveItem(mt.dataset.moveTarget);return;}
-        const cd=e.target.closest('[data-main-calendar-date]');if(cd){renderCalendarDay(cd.dataset.mainCalendarDate);return;}
+        const cd=e.target.closest('[data-main-calendar-date]');if(cd){selectCalendarDate(cd.dataset.mainCalendarDate);return;}
         const ns=e.target.closest('[data-notification-section]');if(ns){closeNotifications();showSection(ns.dataset.notificationSection);return;}
       } catch(err){console.error(err);toast(errText(err),'error');}
     });
@@ -1624,7 +2157,7 @@ async function sendOverdueMail(id) {
     const total=items.reduce((a,x)=>a+x.count,0);
     const badge=$('notificationCount'); if(badge){badge.textContent=total;badge.classList.toggle('hidden',total===0);}
     const body=$('notificationBody'); if(!body)return;
-    body.innerHTML=items.map(x=>`<button type="button" class="notification-item" data-notification-section="${x.section}"><span class="notification-icon">${x.icon}</span><span><strong>${esc(x.label)}</strong><small>${x.count} pending</small></span><b>${x.count}</b></button>`).join('');
+    body.innerHTML=items.filter(x=>x.count>0).map(x=>`<button type="button" class="notification-item" data-notification-section="${x.section}"><span class="notification-icon">${x.icon}</span><span><strong>${esc(x.label)}</strong><small>${x.count} pending</small></span><b>${x.count}</b></button>`).join('');
   }
   function toggleNotifications(){const p=$('notificationPanel');if(!p)return;renderNotifications();p.classList.toggle('hidden');}
   function closeNotifications(){$('notificationPanel')?.classList.add('hidden');}

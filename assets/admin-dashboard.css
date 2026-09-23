@@ -119,47 +119,20 @@
 
 .matlib-fatal-error{position:fixed;right:24px;bottom:24px;z-index:99999;padding:14px 18px;border-radius:12px;background:#9d3f37;color:#fff;font:600 14px/1.4 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.18)}
 
-.btn:disabled{opacity:.55;cursor:not-allowed;transform:none!important}.notification-empty{padding:24px;text-align:center;color:var(--muted);font-size:13px}
+/* Focused UI additions: Drive-style document controls and book import preview */
+.drive-view-btn.active{background:#633717;color:#fff;border-color:#633717}
+.drive-grid.drive-list-view{display:flex;flex-direction:column;gap:8px}
+.drive-grid.drive-list-view .drive-item{min-height:64px;border-radius:12px;padding:10px 14px}
+.drive-grid.drive-list-view .drive-icon{width:38px;height:38px;border-radius:10px}
+.drive-grid.drive-list-view .drive-main small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.drive-grid.drive-list-view .drive-item strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.excel-import-box{margin-top:20px;padding:16px 18px;border:1px dashed #d7bd92;border-radius:15px;background:#fffaf2;display:flex;align-items:center;justify-content:space-between;gap:18px}
+.excel-import-box p{margin:5px 0 0;color:#806d5b;font-size:12px;line-height:1.55}
+.book-import-preview{margin-top:16px;padding:16px;border:1px solid var(--line);border-radius:15px;background:#fff}
+.import-preview-head{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:14px}
+.import-preview-head strong,.import-preview-head small{display:block}.import-preview-head small{color:var(--muted);margin-top:4px;font-size:11px}
+.import-error{padding:14px 16px;border:1px solid #e5b5ad;background:#fff1ef;border-radius:12px;color:#9d3e35;font-size:12px}.import-error ul{margin:8px 0 0 18px;padding:0;line-height:1.6}
+.import-preview-table{max-height:360px;overflow:auto}.import-preview-table table{min-width:760px}
+@media(max-width:800px){.excel-import-box,.import-preview-head{flex-direction:column;align-items:flex-start}.drive-toolbar{flex-wrap:wrap}.drive-search{min-width:100%}}
 
-/* Requested admin-only refinements */
-.faculty-search-toolbar .suggestions{top:calc(100% + 6px);left:0;right:auto;width:min(560px,calc(100% - 140px));max-height:320px;overflow:auto;z-index:80;}
-.faculty-search-toolbar .suggestions button{padding:13px 15px;border-bottom:1px solid #eee4d6;}
-.faculty-search-toolbar .suggestions button:last-child{border-bottom:0;}
-.calendar-selection-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 14px;padding:13px 15px;border:1px solid var(--line);border-radius:15px;background:#fffaf2;}
-.calendar-selection-bar strong,.calendar-selection-bar small{display:block;}
-.calendar-selection-bar strong{margin-top:3px;color:var(--brown);font-size:14px;}
-.calendar-selection-bar small{margin-top:3px;color:var(--muted);font-size:11px;}
-.calendar-cell.range-selected{background:#f3e1b9;border-color:#d3a64e;box-shadow:inset 0 0 0 1px rgba(211,166,78,.2);}
-.calendar-cell.range-start,.calendar-cell.range-end{background:#e7c46f;border-color:#b98531;color:#3f250f;font-weight:900;}
-.calendar-cell.range-start{box-shadow:inset 3px 0 #633717;}
-.calendar-cell.range-end{box-shadow:inset -3px 0 #633717;}
-.calendar-day-events{margin-top:18px;border-top:1px solid var(--line);padding-top:18px;}
-.drive-view-toggle{display:flex;gap:6px;flex:none;}
-.drive-view-toggle .btn{min-height:44px;}
-.drive-view-toggle .btn.active{background:#633717;color:#fff;}
-.drive-grid-view{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;}
-.drive-list-view{display:flex;flex-direction:column;gap:7px;}
-.drive-list-view .drive-item{min-height:62px;border-radius:12px;padding:9px 12px;}
-.drive-list-view .drive-icon{width:38px;height:38px;border-radius:10px;}
-.drive-list-view .drive-main{display:grid;grid-template-columns:minmax(180px,1.5fr) minmax(180px,1fr);align-items:center;gap:14px;}
-.drive-list-view .drive-main small{margin-top:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.drive-list-view .drive-menu-btn{right:8px;width:32px;height:32px;}
-.drive-item{min-width:0;}
-.drive-main{min-width:0;}
-.drive-main strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.drive-main small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-@media(max-width:900px){
-  .faculty-search-toolbar .suggestions{width:100%;top:calc(100% + 6px);}
-  .calendar-selection-bar{align-items:stretch;flex-direction:column;}
-  .drive-view-toggle{width:100%;}
-  .drive-view-toggle .btn{flex:1;}
-  .drive-list-view .drive-main{grid-template-columns:1fr;}
-}
-@media(max-width:600px){
-  .drive-toolbar{flex-wrap:wrap;}
-  .drive-search{min-width:100%;}
-  .drive-view-toggle{flex:1;}
-}
-
-/* Faculty detail selectable views and pagination */
-.faculty-detail-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 14px}.faculty-detail-tab{border:1px solid var(--line);background:#f7efe4;color:#6b513c;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer}.faculty-detail-tab.active{background:var(--brown);color:#fff;border-color:var(--brown)}.faculty-detail-tab .result-pill{margin-left:5px}.faculty-detail-pager{display:flex;justify-content:center;align-items:center;gap:12px;margin-top:14px;color:var(--muted);font-size:12px}.faculty-detail-pager .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.calendar-selection-status{margin:-4px 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fffaf2;color:#6f5740;font-size:12px;font-weight:800}.calendar-cell.calendar-selected-day{border-color:#b98535;background:#f4dfb4;box-shadow:inset 0 0 0 2px rgba(185,133,53,.25)}.calendar-cell.calendar-in-range{background:#fbefd7;border-color:#d6b36d}
